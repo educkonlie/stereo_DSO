@@ -9,8 +9,8 @@
 
 - kitti00:
 
-![](https://github.com/RonaldSun/stereo_DSO/blob/master/results/img/00.png)
+![](https://github.com/educkonlie/stereo_DSO/blob/master/results/img/00.png)
 
-![](https://github.com/RonaldSun/stereo_DSO/blob/master/results/img/00_tl.png)
+![](https://github.com/educkonlie/stereo_DSO/blob/master/results/img/00_tl.png)
 
-![](https://github.com/RonaldSun/stereo_DSO/blob/master/results/img/00_rl.png)
+![](https://github.com/educkonline/stereo_DSO/blob/master/results/img/00_rl.png)

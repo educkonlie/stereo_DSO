@@ -158,7 +158,6 @@ public:
 	bool initialized;
 	bool linearizeOperation;
 
-
 	void setGammaFunction(float* BInv);
 	void setOriginalCalib(const VecXf &originalCalib, int originalW, int originalH);
 
@@ -166,35 +165,36 @@ private:
 
 	CalibHessian Hcalib;
 
-
-
-
 	// opt single point
 	int optimizePoint(PointHessian* point, int minObs, bool flagOOB);
 	PointHessian* optimizeImmaturePoint(ImmaturePoint* point, int minObs, ImmaturePointTemporaryResidual* residuals);
 
 	double linAllPointSinle(PointHessian* point, float outlierTHSlack, bool plot);
 
+
+    std::vector<SE3,Eigen::aligned_allocator<SE3>> lastF_2_fh_tries; // 运动先验
+    void make_motion_prediction_based_on_assumption();
+
 	// mainPipelineFunctions
-	Vec4 trackNewCoarse(FrameHessian* fh);
-	void traceNewCoarse(FrameHessian* fh);
-	void traceNewCoarseNonKey(FrameHessian* fh, FrameHessian* fh_right);
-	void traceNewCoarseKey(FrameHessian* fh,FrameHessian* fh_right);
+	Vec4 track(FrameHessian* fh);
+    void maturelize_window_based_on_newframe(FrameHessian* fh);
+
+//	void traceNewCoarseKey(FrameHessian* fh,FrameHessian* fh_right);
 	void activatePoints();
 	void activatePointsMT();
 	void activatePointsOldFirst();
 	void flagPointsForRemoval();
-	void makeNewTraces(FrameHessian* newFrame, float* gtDepth);
+
+//	void makeNewTraces(FrameHessian* newFrame, float* gtDepth);
+    void plant_on_newframe(FrameHessian* newFrame, float* gtDepth);
+
 	void initializeFromInitializer(FrameHessian* newFrame);
 	void flagFramesForMarginalization(FrameHessian* newFH);
 
-
 	void removeOutliers();
-
 
 	// set precalc values.
 	void setPrecalcValues();
-
 
 	// solce. eventually migrate to ef.
 	void solveSystem(int iteration, double lambda);
@@ -205,7 +205,7 @@ private:
 	double calcLEnergy();
 	double calcMEnergy();
 	void linearizeAll_Reductor(bool fixLinearization, std::vector<PointFrameResidual*>* toRemove, int min, int max, Vec10* stats, int tid);
-	void activatePointsMT_Reductor(std::vector<PointHessian*>* optimized,std::vector<ImmaturePoint*>* toOptimize,int min, int max, Vec10* stats, int tid);
+	void activatePointsMT_Reductor(std::vector<PointHessian*>* optimized,std::vector<ImmaturePoint*>* toOptimize, int min, int max, Vec10* stats, int tid);
 	void applyRes_Reductor(bool copyJacobians, int min, int max, Vec10* stats, int tid);
 
 	void printOptRes(const Vec3 &res, double resL, double resM, double resPrior, double LExact, float a, float b);
@@ -219,7 +219,6 @@ private:
 			std::vector<VecX> &nullspaces_affB);
 
 	void setNewFrameEnergyTH();
-
 
 	void printLogLine();
 	void printEvalLine();
@@ -247,24 +246,18 @@ private:
 	long int statistics_numMargResBwd;
 	float statistics_lastFineTrackRMSE;
 
-
-
-
-
-
-
 	// =================== changed by tracker-thread. protected by trackMutex ============
 	boost::mutex trackMutex;
 	std::vector<FrameShell*> allFrameHistory;
 	CoarseInitializer* coarseInitializer;
 	Vec5 lastCoarseRMSE;
 
-
 	// ================== changed by mapper-thread. protected by mapMutex ===============
 	boost::mutex mapMutex;
 	std::vector<FrameShell*> allKeyFramesHistory;
 
 	EnergyFunctional* ef;
+    // Vec10是模版的類實現
 	IndexThreadReduce<Vec10> treadReduce;
 
 	float* selectionMap;
@@ -272,29 +265,22 @@ private:
 	CoarseDistanceMap* coarseDistanceMap;
 
 	std::vector<FrameHessian*> frameHessians;	// ONLY changed in marginalizeFrame and addFrame.
-	std::vector<FrameHessian*> frameHessians_right;	// ONLY changed in marginalizeFrame and addFrame.
+//	std::vector<FrameHessian*> frameHessians_right;	// ONLY changed in marginalizeFrame and addFrame.
 	std::vector<PointFrameResidual*> activeResiduals;
 	float currentMinActDist;
 
-
 	std::vector<float> allResVec;
 
-
-
 	// mutex etc. for tracker exchange.
+    // 好像是一个参考帧一个跟踪器
 	boost::mutex coarseTrackerSwapMutex;			// if tracker sees that there is a new reference, tracker locks [coarseTrackerSwapMutex] and swaps the two.
 	CoarseTracker* coarseTracker_forNewKF;			// set as as reference. protected by [coarseTrackerSwapMutex].
 	CoarseTracker* coarseTracker;					// always used to track new frames. protected by [trackMutex].
 	float minIdJetVisTracker, maxIdJetVisTracker;
 	float minIdJetVisDebug, maxIdJetVisDebug;
 
-
-
-
-
 	// mutex for camToWorl's in shells (these are always in a good configuration).
 	boost::mutex shellPoseMutex;
-
 
 
 /*
@@ -302,9 +288,9 @@ private:
  *
  */
 
-	void makeKeyFrame( FrameHessian* fh, FrameHessian* fh_right);
-	void makeNonKeyFrame( FrameHessian* fh, FrameHessian* fh_right);
-	void deliverTrackedFrame(FrameHessian* fh, FrameHessian* fh_right, bool needKF);
+	void makeKeyFrame( FrameHessian* fh);
+	void makeNonKeyFrame( FrameHessian* fh);
+	void deliverTrackedFrame(FrameHessian* fh, bool needKF);
 	void mappingLoop();
 
 	// tracking / mapping synchronization. All protected by [trackMapSyncMutex].

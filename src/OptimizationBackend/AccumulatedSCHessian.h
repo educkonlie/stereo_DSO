@@ -37,15 +37,12 @@ namespace dso
 class EFPoint;
 class EnergyFunctional;
 
-
-class AccumulatedSCHessianSSE
-{
+class AccumulatedSCHessianSSE {
 public:
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 	inline AccumulatedSCHessianSSE()
 	{
-		for(int i=0;i<NUM_THREADS;i++)
-		{
+		for(int i=0;i<NUM_THREADS;i++) {
 			accE[i]=0;
 			accEB[i]=0;
 			accD[i]=0;
@@ -53,19 +50,16 @@ public:
 		}
 	};
 	inline ~AccumulatedSCHessianSSE()
-	{
-		for(int i=0;i<NUM_THREADS;i++)
-		{
+    {
+		for(int i=0;i<NUM_THREADS;i++) {
 			if(accE[i] != 0) delete[] accE[i];
 			if(accEB[i] != 0) delete[] accEB[i];
 			if(accD[i] != 0) delete[] accD[i];
 		}
 	};
 
-	inline void setZero(int n, int min=0, int max=1, Vec10* stats=0, int tid=0)
-	{
-		if(n != nframes[tid])
-		{
+	inline void setZero(int n, int min=0, int max=1, Vec10* stats=0, int tid=0) {
+		if(n != nframes[tid]) {
 			if(accE[tid] != 0) delete[] accE[tid];
 			if(accEB[tid] != 0) delete[] accEB[tid];
 			if(accD[tid] != 0) delete[] accD[tid];
@@ -76,8 +70,7 @@ public:
 		accbc[tid].initialize();
 		accHcc[tid].initialize();
 
-		for(int i=0;i<n*n;i++)
-		{
+		for(int i=0;i<n*n;i++) {
 			accE[tid][i].initialize();
 			accEB[tid][i].initialize();
 

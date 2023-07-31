@@ -114,11 +114,8 @@ public:
 
 	PointHessian* data;
 
-
-
 	float priorF;
 	float deltaF;
-
 
 	// constant info (never changes in-between).
 	int idxInPoints;
@@ -136,14 +133,10 @@ public:
 	VecCf Hcd_accAF;
 	float bd_accAF;
 
-
 	EFPointStatus stateFlag;
 };
 
-
-
-class EFFrame
-{
+class EFFrame {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 	EFFrame(FrameHessian* d) : data(d)
@@ -152,12 +145,9 @@ public:
 	}
 	void takeData();
 
-
 	Vec8 prior;				// prior hessian (diagonal)
 	Vec8 delta_prior;		// = state-state_prior (E_prior = (delta_prior)' * diag(prior) * (delta_prior)
 	Vec8 delta;				// state - state_zero.
-
-
 
 	std::vector<EFPoint*> points;
 	FrameHessian* data;

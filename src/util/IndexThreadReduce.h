@@ -21,8 +21,6 @@
 * along with DSO. If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-
 #pragma once
 #include "util/settings.h"
 #include "boost/thread.hpp"
@@ -30,14 +28,11 @@
 #include <iostream>
 
 
-
 namespace dso
 {
 
 template<typename Running>
-class IndexThreadReduce
-{
-
+class IndexThreadReduce {
 public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
@@ -49,13 +44,11 @@ public:
 		callPerIndex = boost::bind(&IndexThreadReduce::callPerIndexDefault, this, _1, _2, _3, _4);
 
 		running = true;
-		for(int i=0;i<NUM_THREADS;i++)
-		{
+		for(int i=0;i<NUM_THREADS;i++) {
 			isDone[i] = false;
 			gotOne[i] = true;
 			workerThreads[i] = boost::thread(&IndexThreadReduce::workerLoop, this, i);
 		}
-
 	}
 	inline ~IndexThreadReduce()
 	{
@@ -68,14 +61,12 @@ public:
 		for(int i=0;i<NUM_THREADS;i++)
 			workerThreads[i].join();
 
-
 		printf("destroyed ThreadReduce\n");
-
 	}
 
-	inline void reduce(boost::function<void(int,int,Running*,int)> callPerIndex, int first, int end, int stepSize = 0)
+	inline void reduce(boost::function<void(int,int,Running*,int)> callPerIndex,
+                       int first, int end, int stepSize = 0)
 	{
-
 		memset(&stats, 0, sizeof(Running));
 
 //		if(!multiThreading)
@@ -84,11 +75,8 @@ public:
 //			return;
 //		}
 
-
-
 		if(stepSize == 0)
 			stepSize = ((end-first)+NUM_THREADS-1)/NUM_THREADS;
-
 
 		//printf("reduce called\n");
 
@@ -101,8 +89,7 @@ public:
 		this->stepSize = stepSize;
 
 		// go worker threads!
-		for(int i=0;i<NUM_THREADS;i++)
-		{
+		for(int i=0;i<NUM_THREADS;i++) {
 			isDone[i] = false;
 			gotOne[i] = false;
 		}
@@ -110,11 +97,9 @@ public:
 		// let them start!
 		todo_signal.notify_all();
 
-
 		//printf("reduce waiting for threads to finish\n");
 		// wait for all worker threads to signal they are done.
-		while(true)
-		{
+		while(true) {
 			// wait for at least one to finish
 			done_signal.wait(lock);
 			//printf("thread finished!\n");
@@ -165,13 +150,11 @@ private:
 	{
 		boost::unique_lock<boost::mutex> lock(exMutex);
 
-		while(running)
-		{
+		while(running) {
 			// try to get something to do.
 			int todo = 0;
 			bool gotSomething = false;
-			if(nextIndex < maxIndex)
-			{
+			if(nextIndex < maxIndex) {
 				// got something!
 				todo = nextIndex;
 				nextIndex+=stepSize;
@@ -190,13 +173,9 @@ private:
 				gotOne[idx] = true;
 				lock.lock();
 				stats += s;
-			}
-
+			} else {
 			// otherwise wait on signal, releasing lock in the meantime.
-			else
-			{
-				if(!gotOne[idx])
-				{
+				if(!gotOne[idx]) {
 					lock.unlock();
 					assert(callPerIndex != 0);
 					Running s; memset(&s, 0, sizeof(Running));
@@ -211,6 +190,6 @@ private:
 				todo_signal.wait(lock);
 			}
 		}
-	}
+    }
 };
 }

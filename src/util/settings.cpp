@@ -69,8 +69,10 @@ float setting_minIdepthH_marg = 50;
 
 
 
-float setting_desiredImmatureDensity = 1500; // immature points per frame
-float setting_desiredPointDensity = 2000; // aimed total points in the active window.
+//float setting_desiredImmatureDensity = 1500; // immature points per frame
+float setting_desiredImmatureDensity = 4500; // immature points per frame
+//float setting_desiredPointDensity = 2000; // aimed total points in the active window.
+float setting_desiredPointDensity = 6000; // aimed total points in the active window.
 float setting_minPointsRemaining = 0.05;  // marg a frame if less than X% points remain.
 float setting_maxLogAffFacInWindow = 0.7; // marg a frame if factor between intensities to current frame is larger than 1/X or X.
 
@@ -96,20 +98,12 @@ float setting_outlierTHSumComponent = 50*50; 		// higher -> less strong gradient
 int setting_pattern = 8;						// point pattern used. DISABLED.
 float setting_margWeightFac = 0.5*0.5;          // factor on hessian when marginalizing, to account for inaccurate linearization points.
 
-
 /* when to re-track a frame */
 float setting_reTrackThreshold = 1.5; // (larger = re-track more often)
-
-
 
 /* require some minimum number of residuals for a point to become valid */
 int   setting_minGoodActiveResForMarg=3;
 int   setting_minGoodResForMarg=4;
-
-
-
-
-
 
 // 0 = nothing.
 // 1 = apply inv. response.
@@ -119,16 +113,9 @@ bool setting_useExposure = true;
 float setting_affineOptModeA = 1e12; //-1: fix. >=0: optimize (with prior, if > 0).
 float setting_affineOptModeB = 1e8; //-1: fix. >=0: optimize (with prior, if > 0).
 
-int setting_gammaWeightsPixelSelect = 1; // 1 = use original intensity for pixel selection; 0 = use gamma-corrected intensity.
-
-
-
+int setting_gammaWeightsPixelSelect = 0; // 1 = use original intensity for pixel selection; 0 = use gamma-corrected intensity.
 
 float setting_huberTH = 9; // Huber Threshold
-
-
-
-
 
 // parameters controlling adaptive energy threshold computation.
 float setting_frameEnergyTHConstWeight = 0.5;
@@ -137,20 +124,11 @@ float setting_frameEnergyTHFacMedian = 1.5;
 float setting_overallEnergyTHWeight = 1;
 float setting_coarseCutoffTH = 20;
 
-
-
-
-
 // parameters controlling pixel selection
 float setting_minGradHistCut = 0.5;
 float setting_minGradHistAdd = 7;
 float setting_gradDownweightPerLevel = 0.75;
 bool  setting_selectDirectionDistribution = true;
-
-
-
-
-
 
 /* settings controling initial immature point tracking */
 float setting_maxPixSearch = 0.027; // max length of the ep. line segment searched during immature point tracking. relative to image resolution.
@@ -164,9 +142,6 @@ float setting_trace_extraSlackOnTH = 1.2;			// for energy-based outlier check, b
 float setting_trace_slackInterval = 1.5;			// if pixel-interval is smaller than this, leave it be.
 float setting_trace_minImprovementFactor = 2;		// if pixel-interval is smaller than this, leave it be.
 
-
-
-
 // for benchmarking different undistortion settings
 float benchmarkSetting_fxfyfac = 0;
 int benchmarkSetting_width = 0;
@@ -176,26 +151,20 @@ float benchmark_varBlurNoise = 0;
 float benchmark_initializerSlackFactor = 3;
 int benchmark_noiseGridsize = 3;
 
-
 float freeDebugParam1 = 1;
 float freeDebugParam2 = 1;
 float freeDebugParam3 = 1;
 float freeDebugParam4 = 1;
 float freeDebugParam5 = 1;
 
-
-
 bool disableReconfigure=false;
 bool debugSaveImages = false;
 bool multiThreading = true;
 bool disableAllDisplay = false;
-bool setting_onlyLogKFPoses = true;
-bool setting_logStuff = true;
-
-
+bool setting_onlyLogKFPoses = false; // print out  all frame history
+bool setting_logStuff = false;
 
 bool goStepByStep = false;
-
 
 bool setting_render_displayCoarseTrackingFull=false;
 bool setting_render_renderWindowFrames=true;
@@ -211,9 +180,20 @@ bool setting_debugout_runquiet = false;
 
 int sparsityFactor = 5;	// not actually a setting, only some legacy stuff for coarse initializer.
 
+double calcRes_MT_total_time = 0.0;
+double trackNewCoarse_total_time = 0.0;
+double deliverTrackedFrame_total_time = 0.0;
+double makeKeyFrame_total_time = 0.0;
+double makeNonKeyFrame_total_time = 0.0;
+int num_kf = 0;
+
 double baseline = 0;
 std::string gt_path = "";
 std::vector<SE3> gt_pose;
+
+SE3 stereo_warp_Rt;
+
+float coupling_factor = 1.0;
 
 void handleKey(char k)
 {
@@ -312,6 +292,5 @@ int staticPatternPadding[10] = {
 		2,
 		4
 };
-
 
 }

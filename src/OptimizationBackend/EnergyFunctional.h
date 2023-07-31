@@ -80,14 +80,11 @@ public:
 	void marginalizeFrame(EFFrame* fh);
 	void removePoint(EFPoint* ph);
 
-
-
 	void marginalizePointsF();
 	void dropPointsF();
 	void solveSystemF(int iteration, double lambda, CalibHessian* HCalib);
 	double calcMEnergyF();
 	double calcLEnergyF_MT();
-
 
 	void makeIDX();
 
@@ -112,7 +109,6 @@ public:
 	std::vector<VecX> lastNullspaces_affB;
 
 	IndexThreadReduce<Vec10>* red;
-
 
 	std::map<uint64_t,
 	  Eigen::Vector2i,
@@ -149,7 +145,6 @@ private:
 
 	AccumulatedTopHessianSSE* accSSE_top_L;
 	AccumulatedTopHessianSSE* accSSE_top_A;
-
 
 	AccumulatedSCHessianSSE* accSSE_bot;
 

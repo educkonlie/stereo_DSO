@@ -196,16 +196,13 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
 // accumulates & shifts L.
 void EnergyFunctional::accumulateAF_MT(MatXX &H, VecX &b, bool MT)
 {
-	if(MT)
-	{
+	if(MT) {
 		red->reduce(boost::bind(&AccumulatedTopHessianSSE::setZero, accSSE_top_A, nFrames,  _1, _2, _3, _4), 0, 0, 0);
 		red->reduce(boost::bind(&AccumulatedTopHessianSSE::addPointsInternal<0>,
 				accSSE_top_A, &allPoints, this,  _1, _2, _3, _4), 0, allPoints.size(), 50);
 		accSSE_top_A->stitchDoubleMT(red,H,b,this,false,true);
 		resInA = accSSE_top_A->nres[0];
-	}
-	else
-	{
+	} else {
 		accSSE_top_A->setZero(nFrames);
 		for(EFFrame* f : frames)
 			for(EFPoint* p : f->points)
@@ -243,15 +240,12 @@ void EnergyFunctional::accumulateLF_MT(MatXX &H, VecX &b, bool MT)
 
 void EnergyFunctional::accumulateSCF_MT(MatXX &H, VecX &b, bool MT)
 {
-	if(MT)
-	{
+	if(MT) {
 		red->reduce(boost::bind(&AccumulatedSCHessianSSE::setZero, accSSE_bot, nFrames,  _1, _2, _3, _4), 0, 0, 0);
 		red->reduce(boost::bind(&AccumulatedSCHessianSSE::addPointsInternal,
 				accSSE_bot, &allPoints, true,  _1, _2, _3, _4), 0, allPoints.size(), 50);
 		accSSE_bot->stitchDoubleMT(red,H,b,this,true);
-	}
-	else
-	{
+	} else {
 		accSSE_bot->setZero(nFrames);
 		for(EFFrame* f : frames)
 			for(EFPoint* p : f->points)
@@ -269,8 +263,7 @@ void EnergyFunctional::resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT)
 
 	Mat18f* xAd = new Mat18f[nFrames*nFrames];
 	VecCf cstep = xF.head<CPARS>();
-	for(EFFrame* h : frames)
-	{
+	for(EFFrame* h : frames) {
 		h->data->step.head<8>() = - x.segment<8>(CPARS+8*h->idx);
 		h->data->step.tail<2>().setZero();
 
@@ -278,7 +271,6 @@ void EnergyFunctional::resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT)
 			xAd[nFrames*h->idx + t->idx] = xF.segment<8>(CPARS+8*h->idx).transpose() *   adHostF[h->idx+nFrames*t->idx]
 			            + xF.segment<8>(CPARS+8*t->idx).transpose() * adTargetF[h->idx+nFrames*t->idx];
 	}
-
 	if(MT)
 		red->reduce(boost::bind(&EnergyFunctional::resubstituteFPt,
 						this, cstep, xAd,  _1, _2, _3, _4), 0, allPoints.size(), 50);
@@ -291,22 +283,19 @@ void EnergyFunctional::resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT)
 void EnergyFunctional::resubstituteFPt(
         const VecCf &xc, Mat18f* xAd, int min, int max, Vec10* stats, int tid)
 {
-	for(int k=min;k<max;k++)
-	{
+	for(int k=min;k<max;k++) {
 		EFPoint* p = allPoints[k];
 
 		int ngoodres = 0;
 		for(EFResidual* r : p->residualsAll) if(r->isActive()) ngoodres++;
-		if(ngoodres==0)
-		{
+		if(ngoodres==0) {
 			p->data->step = 0;
 			continue;
 		}
 		float b = p->bdSumF;
 		b -= xc.dot(p->Hcd_accAF + p->Hcd_accLF);
 
-		for(EFResidual* r : p->residualsAll)
-		{
+		for(EFResidual* r : p->residualsAll) {
 			if(!r->isActive()) continue;
 			b -= xAd[r->hostIDX*nFrames + r->targetIDX] * r->JpJdF;
 		}
@@ -316,10 +305,8 @@ void EnergyFunctional::resubstituteFPt(
 	}
 }
 
-
 double EnergyFunctional::calcMEnergyF()
 {
-
 	assert(EFDeltaValid);
 	assert(EFAdjointsValid);
 	assert(EFIndicesValid);
@@ -331,25 +318,19 @@ double EnergyFunctional::calcMEnergyF()
 
 void EnergyFunctional::calcLEnergyPt(int min, int max, Vec10* stats, int tid)
 {
-
 	Accumulator11 E;
 	E.initialize();
 	VecCf dc = cDeltaF;
 
-	for(int i=min;i<max;i++)
-	{
+	for(int i=min;i<max;i++) {
 		EFPoint* p = allPoints[i];
 		float dd = p->deltaF;
 
-		for(EFResidual* r : p->residualsAll)
-		{
+		for(EFResidual* r : p->residualsAll) {
 			if(!r->isLinearized || !r->isActive()) continue;
 
 			Mat18f dp = adHTdeltaF[r->hostIDX+nFrames*r->targetIDX];
 			RawResidualJacobian* rJ = r->J;
-
-
-
 			// compute Jp*delta
 			float Jp_delta_x_1 =  rJ->Jpdxi[0].dot(dp.head<6>())
 						   +rJ->Jpdc[0].dot(dc)
@@ -364,8 +345,7 @@ void EnergyFunctional::calcLEnergyPt(int min, int max, Vec10* stats, int tid)
 			__m128 delta_a = _mm_set1_ps((float)(dp[6]));
 			__m128 delta_b = _mm_set1_ps((float)(dp[7]));
 
-			for(int i=0;i+3<patternNum;i+=4)
-			{
+			for(int i=0;i+3<patternNum;i+=4) {
 				// PATTERN: E = (2*res_toZeroF + J*delta) * J*delta.
 				__m128 Jdelta =            _mm_mul_ps(_mm_load_ps(((float*)(rJ->JIdx))+i),Jp_delta_x);
 				Jdelta = _mm_add_ps(Jdelta,_mm_mul_ps(_mm_load_ps(((float*)(rJ->JIdx+1))+i),Jp_delta_y));
@@ -378,8 +358,7 @@ void EnergyFunctional::calcLEnergyPt(int min, int max, Vec10* stats, int tid)
 				Jdelta = _mm_mul_ps(Jdelta,r0);
 				E.updateSSENoShift(Jdelta);
 			}
-			for(int i=((patternNum>>2)<<2); i < patternNum; i++)
-			{
+			for(int i=((patternNum>>2)<<2); i < patternNum; i++) {
 				float Jdelta = rJ->JIdx[0][i]*Jp_delta_x_1 + rJ->JIdx[1][i]*Jp_delta_y_1 +
 								rJ->JabF[0][i]*dp[6] + rJ->JabF[1][i]*dp[7];
 				E.updateSingleNoShift((float)(Jdelta * (Jdelta + 2*r->res_toZeroF[i])));
@@ -390,9 +369,6 @@ void EnergyFunctional::calcLEnergyPt(int min, int max, Vec10* stats, int tid)
 	E.finish();
 	(*stats)[0] += E.A;
 }
-
-
-
 
 double EnergyFunctional::calcLEnergyF_MT()
 {
@@ -412,10 +388,30 @@ double EnergyFunctional::calcLEnergyF_MT()
 	return E+red->stats[0];
 }
 
-
-
 EFResidual* EnergyFunctional::insertResidual(PointFrameResidual* r)
 {
+#ifdef DSO_LITE
+    if (r->stereoResidualFlag == false) {
+        EFResidual *efr = new EFResidual(r, r->point->efPoint, r->host->efFrame, r->target->efFrame);
+        efr->idxInAll = r->point->efPoint->residualsAll.size();
+        r->point->efPoint->residualsAll.push_back(efr);
+        if (efr->data->stereoResidualFlag == false)
+            connectivityMap[(((uint64_t) efr->host->frameID) << 32) + ((uint64_t) efr->target->frameID)][0]++;
+//     connectivityMap[(((uint64_t)efr->host->frameID) << 32) + ((uint64_t)efr->target->frameID)][0]++;
+        nResiduals++;
+        r->efResidual = efr;
+        return efr;
+    } else {
+        EFResidual *efr = new EFResidual(r, r->point->efPoint, r->host->efFrame, r->target->frame_right->efFrame);
+        efr->idxInAll = r->point->efPoint->residualsAll.size();
+        r->point->efPoint->residualsAll.push_back(efr);
+//        if (efr->data->stereoResidualFlag == false)
+//            connectivityMap[(((uint64_t) efr->host->frameID) << 32) + ((uint64_t) efr->target->frameID)][0]++;
+        nResiduals++;
+        r->efResidual = efr;
+        return efr;
+    }
+#else
 	EFResidual* efr = new EFResidual(r, r->point->efPoint, r->host->efFrame, r->target->efFrame);
 	efr->idxInAll = r->point->efPoint->residualsAll.size();
 	r->point->efPoint->residualsAll.push_back(efr);
@@ -426,6 +422,7 @@ EFResidual* EnergyFunctional::insertResidual(PointFrameResidual* r)
 	r->efResidual = efr;
 	
 	return efr;
+#endif
 }
 EFFrame* EnergyFunctional::insertFrame(FrameHessian* fh, CalibHessian* Hcalib)
 {
@@ -436,9 +433,12 @@ EFFrame* EnergyFunctional::insertFrame(FrameHessian* fh, CalibHessian* Hcalib)
 	nFrames++;
 	fh->efFrame = eff;
 	//stereo
+    // 这里增加右图
+#ifdef DSO_LITE
+// 记录一下 eff_right的定义处
+#endif
 	EFFrame* eff_right = new EFFrame(fh->frame_right);
-	eff_right->idx = frames.size()+10000;
-// 	eff_right->idx = frames.size();
+	eff_right->idx = frames.size()+1000000;
 	fh->frame_right->efFrame = eff_right;
 
 	assert(HM.cols() == 8*nFrames+CPARS-8);
@@ -455,9 +455,7 @@ EFFrame* EnergyFunctional::insertFrame(FrameHessian* fh, CalibHessian* Hcalib)
 	setAdjointsF(Hcalib);
 	makeIDX();
 
-
-	for(EFFrame* fh2 : frames)
-	{
+	for(EFFrame* fh2 : frames) {
         connectivityMap[(((uint64_t)eff->frameID) << 32) + ((uint64_t)fh2->frameID)] = Eigen::Vector2i(0,0);
 		if(fh2 != eff)
             connectivityMap[(((uint64_t)fh2->frameID) << 32) + ((uint64_t)eff->frameID)] = Eigen::Vector2i(0,0);
@@ -479,7 +477,6 @@ EFPoint* EnergyFunctional::insertPoint(PointHessian* ph)
 	return efp;
 }
 
-
 void EnergyFunctional::dropResidual(EFResidual* r)
 {
 	EFPoint* p = r->point;
@@ -488,7 +485,6 @@ void EnergyFunctional::dropResidual(EFResidual* r)
 	p->residualsAll[r->idxInAll] = p->residualsAll.back();
 	p->residualsAll[r->idxInAll]->idxInAll = r->idxInAll;
 	p->residualsAll.pop_back();
-
 
 	if(r->isActive())
 		r->host->data->shell->statistics_goodResOnThis++;
@@ -504,7 +500,6 @@ void EnergyFunctional::dropResidual(EFResidual* r)
 }
 void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 {
-
 	assert(EFDeltaValid);
 	assert(EFAdjointsValid);
 	assert(EFIndicesValid);
@@ -513,15 +508,10 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 	int ndim = nFrames*8+CPARS-8;// new dimension
 	int odim = nFrames*8+CPARS;// old dimension
 
-
 //	VecX eigenvaluesPre = HM.eigenvalues().real();
 //	std::sort(eigenvaluesPre.data(), eigenvaluesPre.data()+eigenvaluesPre.size());
 //
-
-
-
-	if((int)fh->idx != (int)frames.size()-1)
-	{
+	if((int)fh->idx != (int)frames.size()-1) {
 		int io = fh->idx*8+CPARS;	// index of frame to move to end
 		int ntail = 8*(nFrames-fh->idx-1);
 		assert((io+8+ntail) == nFrames*8+CPARS);
@@ -547,14 +537,10 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
     HM.bottomRightCorner<8,8>().diagonal() += fh->prior;
     bM.tail<8>() += fh->prior.cwiseProduct(fh->delta_prior);
 
-
-
 //	std::cout << std::setprecision(16) << "HMPre:\n" << HM << "\n\n";
-
 
 	VecX SVec = (HM.diagonal().cwiseAbs()+VecX::Constant(HM.cols(), 10)).cwiseSqrt();
 	VecX SVecI = SVec.cwiseInverse();
-
 
 //	std::cout << std::setprecision(16) << "SVec: " << SVec.transpose() << "\n\n";
 //	std::cout << std::setprecision(16) << "SVecI: " << SVecI.transpose() << "\n\n";
@@ -583,8 +569,7 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 	bM = bMScaled.head(ndim);
 
 	// remove from vector, without changing the order!
-	for(unsigned int i=fh->idx; i+1<frames.size();i++)
-	{
+	for(unsigned int i=fh->idx; i+1<frames.size();i++) {
 		frames[i] = frames[i+1];
 		frames[i]->idx = i;
 	}
@@ -596,9 +581,6 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 	assert((int)frames.size()*8+CPARS == (int)HM.cols());
 	assert((int)frames.size()*8+CPARS == (int)bM.size());
 	assert((int)frames.size() == (int)nFrames);
-
-
-
 
 //	VecX eigenvaluesPost = HM.eigenvalues().real();
 //	std::sort(eigenvaluesPost.data(), eigenvaluesPost.data()+eigenvaluesPost.size());
@@ -617,23 +599,17 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 }
 
 
-
-
 void EnergyFunctional::marginalizePointsF()
 {
 	assert(EFDeltaValid);
 	assert(EFAdjointsValid);
 	assert(EFIndicesValid);
 
-
 	allPointsToMarg.clear();
-	for(EFFrame* f : frames)
-	{
-		for(int i=0;i<(int)f->points.size();i++)
-		{
+	for(EFFrame* f : frames) {
+		for(int i=0;i<(int)f->points.size();i++) {
 			EFPoint* p = f->points[i];
-			if(p->stateFlag == EFPointStatus::PS_MARGINALIZE)
-			{
+			if(p->stateFlag == EFPointStatus::PS_MARGINALIZE) {
 				p->priorF *= setting_idepthFixPriorMargFac;
 				for(EFResidual* r : p->residualsAll)
 					if(r->isActive())
@@ -647,8 +623,7 @@ void EnergyFunctional::marginalizePointsF()
 // 	LOG(INFO)<<"allPointsToMarg.size(): "<<allPointsToMarg.size();
 	accSSE_bot->setZero(nFrames);
 	accSSE_top_A->setZero(nFrames);
-	for(EFPoint* p : allPointsToMarg)
-	{
+	for(EFPoint* p : allPointsToMarg) {
 		accSSE_top_A->addPoint<2>(p,this);
 		accSSE_bot->addPoint(p,false);
 		removePoint(p);
@@ -663,15 +638,13 @@ void EnergyFunctional::marginalizePointsF()
 	MatXX H =  M-Msc;
     VecX b =  Mb-Mbsc;
 
-	if(setting_solverMode & SOLVER_ORTHOGONALIZE_POINTMARG)
-	{
+	if(setting_solverMode & SOLVER_ORTHOGONALIZE_POINTMARG) {
 		// have a look if prior is there.
 		bool haveFirstFrame = false;
 		for(EFFrame* f : frames) if(f->frameID==0) haveFirstFrame=true;
 
 		if(!haveFirstFrame)
 			orthogonalize(&b, &H);
-
 	}
 
 	HM += setting_margWeightFac*H;
@@ -686,15 +659,10 @@ void EnergyFunctional::marginalizePointsF()
 
 void EnergyFunctional::dropPointsF()
 {
-
-
-	for(EFFrame* f : frames)
-	{
-		for(int i=0;i<(int)f->points.size();i++)
-		{
+	for(EFFrame* f : frames) {
+		for(int i=0;i<(int)f->points.size();i++) {
 			EFPoint* p = f->points[i];
-			if(p->stateFlag == EFPointStatus::PS_DROP)
-			{
+			if(p->stateFlag == EFPointStatus::PS_DROP) {
 				removePoint(p);
 				i--;
 			}
@@ -730,7 +698,6 @@ void EnergyFunctional::orthogonalize(VecX* b, MatXX* H)
 //	std::sort(eigenvaluesPre.data(), eigenvaluesPre.data()+eigenvaluesPre.size());
 //	std::cout << "EigPre:: " << eigenvaluesPre.transpose() << "\n";
 
-
 	// decide to which nullspaces to orthogonalize.
 	std::vector<VecX> ns;
 	ns.insert(ns.end(), lastNullspaces_pose.begin(), lastNullspaces_pose.end());
@@ -740,24 +707,17 @@ void EnergyFunctional::orthogonalize(VecX* b, MatXX* H)
 //	if(setting_affineOptModeB <= 0)
 //		ns.insert(ns.end(), lastNullspaces_affB.begin(), lastNullspaces_affB.end());
 
-
-
-
-
 	// make Nullspaces matrix
 	MatXX N(ns[0].rows(), ns.size());
 	for(unsigned int i=0;i<ns.size();i++)
 		N.col(i) = ns[i].normalized();
-
-
 
 	// compute Npi := N * (N' * N)^-1 = pseudo inverse of N.
 	Eigen::JacobiSVD<MatXX> svdNN(N, Eigen::ComputeThinU | Eigen::ComputeThinV);
 
 	VecX SNN = svdNN.singularValues();
 	double minSv = 1e10, maxSv = 0;
-	for(int i=0;i<SNN.size();i++)
-	{
+	for(int i=0;i<SNN.size();i++) {
 		if(SNN[i] < minSv) minSv = SNN[i];
 		if(SNN[i] > maxSv) maxSv = SNN[i];
 	}
@@ -771,15 +731,12 @@ void EnergyFunctional::orthogonalize(VecX* b, MatXX* H)
 	if(b!=0) *b -= NNpiTS * *b;
 	if(H!=0) *H -= NNpiTS * *H * NNpiTS;
 
-
 //	std::cout << std::setprecision(16) << "Orth SV: " << SNN.reverse().transpose() << "\n";
 
 //	VecX eigenvaluesPost = H.eigenvalues().real();
 //	std::sort(eigenvaluesPost.data(), eigenvaluesPost.data()+eigenvaluesPost.size());
 //	std::cout << "EigPost:: " << eigenvaluesPost.transpose() << "\n";
-
 }
-
 
 void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* HCalib)
 {
@@ -793,38 +750,24 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 	MatXX HL_top, HA_top, H_sc;
 	VecX  bL_top, bA_top, bM_top, b_sc;
 
+    // 边缘化后的求解，三个元素。详见涂金戈。
+    // A是不受边缘化影响的残差和雅克比， L是线性化的残差和雅克比，SCF是计算舒尔补
 	accumulateAF_MT(HA_top, bA_top,multiThreading);
-
-
 	accumulateLF_MT(HL_top, bL_top,multiThreading);
-
-
-
 	accumulateSCF_MT(H_sc, b_sc,multiThreading);
 
-
 	bM_top = (bM+ HM * getStitchedDeltaF());
-
-
-
-
-
 
 	MatXX HFinal_top;
 	VecX bFinal_top;
 
-	if(setting_solverMode & SOLVER_ORTHOGONALIZE_SYSTEM)
-	{
+	if(setting_solverMode & SOLVER_ORTHOGONALIZE_SYSTEM) {
 		// have a look if prior is there.
 		bool haveFirstFrame = false;
 		for(EFFrame* f : frames) if(f->frameID==0) haveFirstFrame=true;
 
-
-
-
 		MatXX HT_act =  HL_top + HA_top - H_sc;
 		VecX bT_act =   bL_top + bA_top - b_sc;
-
 
 		if(!haveFirstFrame)
 			orthogonalize(&bT_act, &HT_act);
@@ -832,33 +775,28 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 		HFinal_top = HT_act + HM;
 		bFinal_top = bT_act + bM_top;
 
-
-
-
-
 		lastHS = HFinal_top;
 		lastbS = bFinal_top;
 
-		for(int i=0;i<8*nFrames+CPARS;i++) HFinal_top(i,i) *= (1+lambda);
+#ifdef MY_LAMBDA
+		for(int i=0;i<8*nFrames+CPARS;i++) HFinal_top(i,i) += lambda;
+#else
+        for(int i=0;i<8*nFrames+CPARS;i++) HFinal_top(i,i) *= (1+lambda);
+#endif
 
-	}
-	else
-	{
-
-
+	} else {
 		HFinal_top = HL_top + HM + HA_top;
 		bFinal_top = bL_top + bM_top + bA_top - b_sc;
 
 		lastHS = HFinal_top - H_sc;
 		lastbS = bFinal_top;
-
+#ifdef MY_LAMBDA
+		for(int i=0;i<8*nFrames+CPARS;i++) HFinal_top(i,i) += lambda;
+#else
 		for(int i=0;i<8*nFrames+CPARS;i++) HFinal_top(i,i) *= (1+lambda);
+#endif
 		HFinal_top -= H_sc * (1.0f/(1+lambda));
 	}
-
-
-
-
 // 	std::ofstream f2;
 // 	std::string dsoposefile = "/home/sjm/桌面/temp/HFinal_myself.txt";
 // 	f2.open(dsoposefile,std::ios::out);
@@ -870,8 +808,7 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 // 	}
 // 	f2.close();
 	VecX x;
-	if(setting_solverMode & SOLVER_SVD)
-	{
+	if(setting_solverMode & SOLVER_SVD) {
 		VecX SVecI = HFinal_top.diagonal().cwiseSqrt().cwiseInverse();
 		MatXX HFinalScaled = SVecI.asDiagonal() * HFinal_top * SVecI.asDiagonal();
 		VecX bFinalScaled  = SVecI.asDiagonal() * bFinal_top;
@@ -879,42 +816,34 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 
 		VecX S = svd.singularValues();
 		double minSv = 1e10, maxSv = 0;
-		for(int i=0;i<S.size();i++)
-		{
+		for(int i=0;i<S.size();i++) {
 			if(S[i] < minSv) minSv = S[i];
 			if(S[i] > maxSv) maxSv = S[i];
 		}
 
 		VecX Ub = svd.matrixU().transpose()*bFinalScaled;
 		int setZero=0;
-		for(int i=0;i<Ub.size();i++)
-		{
+		for(int i=0;i<Ub.size();i++) {
 			if(S[i] < setting_solverModeDelta*maxSv)
 			{ Ub[i] = 0; setZero++; }
 
 			if((setting_solverMode & SOLVER_SVD_CUT7) && (i >= Ub.size()-7))
 			{ Ub[i] = 0; setZero++; }
-
 			else Ub[i] /= S[i];
 		}
 		x = SVecI.asDiagonal() * svd.matrixV() * Ub;
-
-	}
-	else
-	{
+	} else {
 		VecX SVecI = (HFinal_top.diagonal()+VecX::Constant(HFinal_top.cols(), 10)).cwiseSqrt().cwiseInverse();
 		MatXX HFinalScaled = SVecI.asDiagonal() * HFinal_top * SVecI.asDiagonal();
 		x = SVecI.asDiagonal() * HFinalScaled.ldlt().solve(SVecI.asDiagonal() * bFinal_top);//  SVec.asDiagonal() * svd.matrixV() * Ub;
 	}
 
-
-
-	if((setting_solverMode & SOLVER_ORTHOGONALIZE_X) || (iteration >= 2 && (setting_solverMode & SOLVER_ORTHOGONALIZE_X_LATER)))
-	{
+	if((setting_solverMode & SOLVER_ORTHOGONALIZE_X) ||
+            (iteration >= 2 &&
+                    (setting_solverMode & SOLVER_ORTHOGONALIZE_X_LATER))) {
 		VecX xOld = x;
 		orthogonalize(&x, 0);
 	}
-
 
 	lastX = x;
 // 	LOG(INFO)<<"x: "<<x.transpose();
@@ -924,8 +853,6 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 	currentLambda= lambda;
 	resubstituteF_MT(x, HCalib,multiThreading);
 	currentLambda=0;
-
-
 }
 void EnergyFunctional::makeIDX()
 {
@@ -935,23 +862,21 @@ void EnergyFunctional::makeIDX()
 	allPoints.clear();
 
 	for(EFFrame* f : frames)
-		for(EFPoint* p : f->points)
-		{
+		for(EFPoint* p : f->points) {
 			allPoints.push_back(p);
-			for(EFResidual* r : p->residualsAll)
-			{
+			for(EFResidual* r : p->residualsAll) {
 				r->hostIDX = r->host->idx;
 				r->targetIDX = r->target->idx;
-				if(r->data->stereoResidualFlag == true){
+#ifdef DSO_LITE
+#endif
+				if(r->data->stereoResidualFlag == true) {
 				  r->targetIDX = frames[frames.size()-1]->idx;
 				}
 			}
 		}
 
-
 	EFIndicesValid=true;
 }
-
 
 VecX EnergyFunctional::getStitchedDeltaF() const
 {
@@ -959,7 +884,6 @@ VecX EnergyFunctional::getStitchedDeltaF() const
 	for(int h=0;h<nFrames;h++) d.segment<8>(CPARS+8*h) = frames[h]->delta;
 	return d;
 }
-
 
 
 }

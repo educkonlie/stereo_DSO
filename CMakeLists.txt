@@ -1,4 +1,4 @@
-SET(PROJECT_NAME DSO)
+SET(PROJECT_NAME stereo-DSO)
 
 PROJECT(${PROJECT_NAME})
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
@@ -28,7 +28,7 @@ include_directories(${Glog_INCLUDE_DIRS})
 # flags
 add_definitions("-DENABLE_SSE")
 set(CMAKE_CXX_FLAGS
-   "${SSE_FLAGS} -O3 -g -std=c++0x -march=native"
+   "${SSE_FLAGS} -O3 -g  -std=c++17 -march=native"
 #   "${SSE_FLAGS} -O3 -g -std=c++0x -fno-omit-frame-pointer"
 )
 
@@ -128,7 +128,8 @@ endif()
 if (OpenCV_FOUND AND Pangolin_FOUND)
 	message("--- compiling dso_dataset.")
 	add_executable(dso_dataset ${PROJECT_SOURCE_DIR}/src/main_dso_pangolin.cpp )
-    target_link_libraries(dso_dataset dso boost_system cxsparse ${BOOST_THREAD_LIBRARY} ${LIBZIP_LIBRARY} ${Pangolin_LIBRARIES} ${OpenCV_LIBS} ${GLOG_LIBRARY})
+    target_link_libraries(dso_dataset dso boost_system cxsparse
+			${BOOST_THREAD_LIBRARY} ${LIBZIP_LIBRARY} ${Pangolin_LIBRARIES} ${OpenCV_LIBS} ${GLOG_LIBRARY} tbb)
 else()
 	message("--- not building dso_dataset, since either don't have openCV or Pangolin.")
 endif()

@@ -51,8 +51,7 @@ struct FullJacRowT
 	Eigen::Vector2f projectedTo[MAX_RES_PER_POINT];
 };
 
-class PointFrameResidual
-{
+class PointFrameResidual {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -69,20 +68,16 @@ public:
 	double state_NewEnergy;
 	double state_NewEnergyWithOutlier;
 
-
 	void setState(ResState s) {state_state = s;}
-
 
 	PointHessian* point;
 	FrameHessian* host;
 	FrameHessian* target;
 	RawResidualJacobian* J;
 
-
 	bool isNew;
 
-
-	Eigen::Vector2f projectedTo[MAX_RES_PER_POINT];
+	Eigen::Vector2f projectedTo[MAX_RES_PER_POINT]; // 一个point有MAX_RES_PER_POINT个pattern点, 即8个
 	Vec3f centerProjectedTo;
 
 	~PointFrameResidual();
@@ -90,10 +85,9 @@ public:
 	PointFrameResidual(PointHessian* point_, FrameHessian* host_, FrameHessian* target_);
 	double linearize(CalibHessian* HCalib);
 	double linearizeStereo(CalibHessian* HCalib);
-	
 
 	void resetOOB()
-	{
+    {
 		state_NewEnergy = state_energy = 0;
 		state_NewState = ResState::OUTLIER;
 

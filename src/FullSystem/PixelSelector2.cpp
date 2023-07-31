@@ -136,12 +136,7 @@ void PixelSelector::makeHists(const FrameHessian* const fh)
 			num++; sum+=ths[x+y*w32];
 
 			thsSmoothed[x+y*w32] = (sum/num) * (sum/num);
-
 		}
-
-
-
-
 }
 int PixelSelector::makeMaps(
 		const FrameHessian* const fh,
@@ -151,7 +146,6 @@ int PixelSelector::makeMaps(
 	float numWant=density;
 	float quotia;
 	int idealPotential = currentPotential;
-
 
 //	if(setting_pixelSelectionUseFast>0 && allowFast)
 //	{
@@ -177,10 +171,6 @@ int PixelSelector::makeMaps(
 //	}
 //	else
 	{
-
-
-
-
 		// the number of selected pixels behaves approximately as
 		// K / (pot+1)^2, where K is a scene-dependent constant.
 		// we will allow sub-selecting pixels by up to a quotia of 0.25, otherwise we will re-select.
@@ -299,19 +289,16 @@ int PixelSelector::makeMaps(
 Eigen::Vector3i PixelSelector::select(const FrameHessian* const fh,
 		float* map_out, int pot, float thFactor)
 {
-
 	Eigen::Vector3f const * const map0 = fh->dI;
 
 	float * mapmax0 = fh->absSquaredGrad[0];
 	float * mapmax1 = fh->absSquaredGrad[1];
 	float * mapmax2 = fh->absSquaredGrad[2];
 
-
 	int w = wG[0];
 	int w1 = wG[1];
 	int w2 = wG[2];
 	int h = hG[0];
-
 
 	const Vec2f directions[16] = {
 	         Vec2f(0,    1.0000),
@@ -333,37 +320,30 @@ Eigen::Vector3i PixelSelector::select(const FrameHessian* const fh,
 
 	memset(map_out,0,w*h*sizeof(PixelSelectorStatus));
 
-
-
 	float dw1 = setting_gradDownweightPerLevel;
 	float dw2 = dw1*dw1;
 
-
 	int n3=0, n2=0, n4=0;
-	for(int y4=0;y4<h;y4+=(4*pot)) for(int x4=0;x4<w;x4+=(4*pot))
-	{
+	for(int y4=0;y4<h;y4+=(4*pot)) for(int x4=0;x4<w;x4+=(4*pot)) {
 		int my3 = std::min((4*pot), h-y4);
 		int mx3 = std::min((4*pot), w-x4);
 		int bestIdx4=-1; float bestVal4=0;
 		Vec2f dir4 = directions[randomPattern[n2] & 0xF];
-		for(int y3=0;y3<my3;y3+=(2*pot)) for(int x3=0;x3<mx3;x3+=(2*pot))
-		{
+		for(int y3=0;y3<my3;y3+=(2*pot)) for(int x3=0;x3<mx3;x3+=(2*pot)) {
 			int x34 = x3+x4;
 			int y34 = y3+y4;
 			int my2 = std::min((2*pot), h-y34);
 			int mx2 = std::min((2*pot), w-x34);
 			int bestIdx3=-1; float bestVal3=0;
 			Vec2f dir3 = directions[randomPattern[n2] & 0xF];
-			for(int y2=0;y2<my2;y2+=pot) for(int x2=0;x2<mx2;x2+=pot)
-			{
+			for(int y2=0;y2<my2;y2+=pot) for(int x2=0;x2<mx2;x2+=pot) {
 				int x234 = x2+x34;
 				int y234 = y2+y34;
 				int my1 = std::min(pot, h-y234);
 				int mx1 = std::min(pot, w-x234);
 				int bestIdx2=-1; float bestVal2=0;
 				Vec2f dir2 = directions[randomPattern[n2] & 0xF];
-				for(int y1=0;y1<my1;y1+=1) for(int x1=0;x1<mx1;x1+=1)
-				{
+				for(int y1=0;y1<my1;y1+=1) for(int x1=0;x1<mx1;x1+=1) {
 					assert(x1+x234 < w);
 					assert(y1+y234 < h);
 					int idx = x1+x234 + w*(y1+y234);
@@ -372,15 +352,12 @@ Eigen::Vector3i PixelSelector::select(const FrameHessian* const fh,
 
 					if(xf<4 || xf>=w-5 || yf<4 || yf>h-4) continue;
 
-
 					float pixelTH0 = thsSmoothed[(xf>>5) + (yf>>5) * thsStep];
 					float pixelTH1 = pixelTH0*dw1;
 					float pixelTH2 = pixelTH1*dw2;
 
-
 					float ag0 = mapmax0[idx];
-					if(ag0 > pixelTH0*thFactor)
-					{
+					if(ag0 > pixelTH0*thFactor) {
 						Vec2f ag0d = map0[idx].tail<2>();
 						float dirNorm = fabsf((float)(ag0d.dot(dir2)));
 						if(!setting_selectDirectionDistribution) dirNorm = ag0;
@@ -391,8 +368,7 @@ Eigen::Vector3i PixelSelector::select(const FrameHessian* const fh,
 					if(bestIdx3==-2) continue;
 
 					float ag1 = mapmax1[(int)(xf*0.5f+0.25f) + (int)(yf*0.5f+0.25f)*w1];
-					if(ag1 > pixelTH1*thFactor)
-					{
+					if(ag1 > pixelTH1*thFactor) {
 						Vec2f ag0d = map0[idx].tail<2>();
 						float dirNorm = fabsf((float)(ag0d.dot(dir3)));
 						if(!setting_selectDirectionDistribution) dirNorm = ag1;
@@ -403,8 +379,7 @@ Eigen::Vector3i PixelSelector::select(const FrameHessian* const fh,
 					if(bestIdx4==-2) continue;
 
 					float ag2 = mapmax2[(int)(xf*0.25f+0.125) + (int)(yf*0.25f+0.125)*w2];
-					if(ag2 > pixelTH2*thFactor)
-					{
+					if(ag2 > pixelTH2*thFactor) {
 						Vec2f ag0d = map0[idx].tail<2>();
 						float dirNorm = fabsf((float)(ag0d.dot(dir4)));
 						if(!setting_selectDirectionDistribution) dirNorm = ag2;

@@ -35,12 +35,9 @@ namespace dso
 {
 
 
-
 template<int mode>
 void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * const ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
 {
-
-
 	assert(mode==0 || mode==1 || mode==2);
 
 	VecCf dc = ef->cDeltaF;
@@ -50,44 +47,36 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 	float Hdd_acc=0;
 	VecCf  Hcd_acc = VecCf::Zero();
 
-	for(EFResidual* r : p->residualsAll)
-	{
-		if(mode==0)
-		{
+	for(EFResidual* r : p->residualsAll) {
+		if(mode==0) {
 			if(r->isLinearized || !r->isActive()) continue;
 		}
-		if(mode==1)
-		{
+		if(mode==1) {
 			if(!r->isLinearized || !r->isActive()) continue;
 		}
-		if(mode==2)
-		{
+		if(mode==2) {
 			if(!r->isActive()) continue;
 			assert(r->isLinearized);
 		}
 
-
 		RawResidualJacobian* rJ = r->J;
 		int htIDX = r->hostIDX + r->targetIDX*nframes[tid];
 		Mat18f dp = ef->adHTdeltaF[htIDX];
-
-
 
 		VecNRf resApprox;
 		if(mode==0)
 			resApprox = rJ->resF;
 		if(mode==2)
 			resApprox = r->res_toZeroF;
-		if(mode==1)
-		{
+		if(mode==1) {
 			// compute Jp*delta
+            // 更新L部分的残差，因为已经丢失观测，所以只能用res = res - J * delta来更新
 			__m128 Jp_delta_x = _mm_set1_ps(rJ->Jpdxi[0].dot(dp.head<6>())+rJ->Jpdc[0].dot(dc)+rJ->Jpdd[0]*dd);
 			__m128 Jp_delta_y = _mm_set1_ps(rJ->Jpdxi[1].dot(dp.head<6>())+rJ->Jpdc[1].dot(dc)+rJ->Jpdd[1]*dd);
 			__m128 delta_a = _mm_set1_ps((float)(dp[6]));
 			__m128 delta_b = _mm_set1_ps((float)(dp[7]));
 
-			for(int i=0;i<patternNum;i+=4)
-			{
+			for(int i=0;i<patternNum;i+=4) {
 				// PATTERN: rtz = resF - [JI*Jp Ja]*delta.
 				__m128 rtz = _mm_load_ps(((float*)&r->res_toZeroF)+i);
 				rtz = _mm_add_ps(rtz,_mm_mul_ps(_mm_load_ps(((float*)(rJ->JIdx))+i),Jp_delta_x));
@@ -102,15 +91,13 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 		Vec2f JI_r(0,0);
 		Vec2f Jab_r(0,0);
 		float rr=0;
-		for(int i=0;i<patternNum;i++)
-		{
+		for(int i=0;i<patternNum;i++) {
 			JI_r[0] += resApprox[i] *rJ->JIdx[0][i];
 			JI_r[1] += resApprox[i] *rJ->JIdx[1][i];
 			Jab_r[0] += resApprox[i] *rJ->JabF[0][i];
 			Jab_r[1] += resApprox[i] *rJ->JabF[1][i];
 			rr += resApprox[i]*resApprox[i];
 		}
-
 
 		acc[tid][htIDX].update(
 				rJ->Jpdc[0].data(), rJ->Jpdxi[0].data(),
@@ -128,7 +115,6 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 				rJ->JabJIdx(1,0), rJ->JabJIdx(1,1),
 				JI_r[0], JI_r[1]);
 
-
 		Vec2f Ji2_Jpdd = rJ->JIdx2 * rJ->Jpdd;
 		bd_acc +=  JI_r[0]*rJ->Jpdd[0] + JI_r[1]*rJ->Jpdd[1];
 		Hdd_acc += Ji2_Jpdd.dot(rJ->Jpdd);
@@ -137,57 +123,41 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 		nres[tid]++;
 	}
 
-	if(mode==0)
-	{
+	if(mode==0) {
 		p->Hdd_accAF = Hdd_acc;
 		p->bd_accAF = bd_acc;
 		p->Hcd_accAF = Hcd_acc;
 	}
-	if(mode==1 || mode==2)
-	{
+	if(mode==1 || mode==2) {
 		p->Hdd_accLF = Hdd_acc;
 		p->bd_accLF = bd_acc;
 		p->Hcd_accLF = Hcd_acc;
 	}
-	if(mode==2)
-	{
+	if(mode==2) {
 		p->Hcd_accAF.setZero();
 		p->Hdd_accAF = 0;
 		p->bd_accAF = 0;
 	}
-
 }
 template void AccumulatedTopHessianSSE::addPoint<0>(EFPoint* p, EnergyFunctional const * const ef, int tid);
 template void AccumulatedTopHessianSSE::addPoint<1>(EFPoint* p, EnergyFunctional const * const ef, int tid);
 template void AccumulatedTopHessianSSE::addPoint<2>(EFPoint* p, EnergyFunctional const * const ef, int tid);
-
-
-
-
-
-
-
 
 void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional const * const EF, bool usePrior, bool useDelta, int tid)
 {
 	H = MatXX::Zero(nframes[tid]*8+CPARS, nframes[tid]*8+CPARS);
 	b = VecX::Zero(nframes[tid]*8+CPARS);
 
-
 	for(int h=0;h<nframes[tid];h++)
-		for(int t=0;t<nframes[tid];t++)
-		{
+		for(int t=0;t<nframes[tid];t++) {
 			int hIdx = CPARS+h*8;
 			int tIdx = CPARS+t*8;
 			int aidx = h+nframes[tid]*t;
-
-
 
 			acc[tid][aidx].finish();
 			if(acc[tid][aidx].num==0) continue;
 
 			MatPCPC accH = acc[tid][aidx].H.cast<double>();
-
 
 			H.block<8,8>(hIdx, hIdx).noalias() += EF->adHost[aidx] * accH.block<8,8>(CPARS,CPARS) * EF->adHost[aidx].transpose();
 
@@ -208,29 +178,23 @@ void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional 
 			b.head<CPARS>().noalias() += accH.block<CPARS,1>(0,8+CPARS);
 		}
 
-
 	// ----- new: copy transposed parts.
-	for(int h=0;h<nframes[tid];h++)
-	{
+	for(int h=0;h<nframes[tid];h++) {
 		int hIdx = CPARS+h*8;
 		H.block<CPARS,8>(0,hIdx).noalias() = H.block<8,CPARS>(hIdx,0).transpose();
 
-		for(int t=h+1;t<nframes[tid];t++)
-		{
+		for(int t=h+1;t<nframes[tid];t++) {
 			int tIdx = CPARS+t*8;
 			H.block<8,8>(hIdx, tIdx).noalias() += H.block<8,8>(tIdx, hIdx).transpose();
 			H.block<8,8>(tIdx, hIdx).noalias() = H.block<8,8>(hIdx, tIdx).transpose();
 		}
 	}
 
-
-	if(usePrior)
-	{
+	if(usePrior) {
 		assert(useDelta);
 		H.diagonal().head<CPARS>() += EF->cPrior;
 		b.head<CPARS>() += EF->cPrior.cwiseProduct(EF->cDeltaF.cast<double>());
-		for(int h=0;h<nframes[tid];h++)
-		{
+		for (int h=0;h<nframes[tid];h++) {
             H.diagonal().segment<8>(CPARS+h*8) += EF->frames[h]->prior;
             b.segment<8>(CPARS+h*8) += EF->frames[h]->prior.cwiseProduct(EF->frames[h]->delta_prior);
 		}
@@ -246,9 +210,7 @@ void AccumulatedTopHessianSSE::stitchDoubleInternal(
 	if(tid == -1) { toAggregate = 1; tid = 0; }	// special case: if we dont do multithreading, dont aggregate.
 	if(min==max) return;
 
-
-	for(int k=min;k<max;k++)
-	{
+	for(int k=min;k<max;k++) {
 		int h = k%nframes[0];
 		int t = k/nframes[0];
 
@@ -260,8 +222,7 @@ void AccumulatedTopHessianSSE::stitchDoubleInternal(
 
 		MatPCPC accH = MatPCPC::Zero();
 
-		for(int tid2=0;tid2 < toAggregate;tid2++)
-		{
+		for(int tid2=0;tid2 < toAggregate;tid2++) {
 			acc[tid2][aidx].finish();
 			if(acc[tid2][aidx].num==0) continue;
 			accH += acc[tid2][aidx].H.cast<double>();
@@ -284,24 +245,18 @@ void AccumulatedTopHessianSSE::stitchDoubleInternal(
 		b[tid].segment<8>(tIdx).noalias() += EF->adTarget[aidx] * accH.block<8,1>(CPARS,CPARS+8);
 
 		b[tid].head<CPARS>().noalias() += accH.block<CPARS,1>(0,CPARS+8);
-
 	}
 
-
 	// only do this on one thread.
-	if(min==0 && usePrior)
-	{
+	if(min==0 && usePrior) {
 		H[tid].diagonal().head<CPARS>() += EF->cPrior;
 		b[tid].head<CPARS>() += EF->cPrior.cwiseProduct(EF->cDeltaF.cast<double>());
-		for(int h=0;h<nframes[tid];h++)
-		{
+		for(int h=0;h<nframes[tid];h++) {
 			H[tid].diagonal().segment<8>(CPARS+h*8) += EF->frames[h]->prior;
 			b[tid].segment<8>(CPARS+h*8) += EF->frames[h]->prior.cwiseProduct(EF->frames[h]->delta_prior);
 		}
 	}
 }
-
-
 
 }
 

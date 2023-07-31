@@ -35,7 +35,6 @@
 namespace dso
 {
 
-
 void EFResidual::takeDataF()
 {
 	std::swap<RawResidualJacobian*>(J, data->J);
@@ -48,14 +47,11 @@ void EFResidual::takeDataF()
 	JpJdF.segment<2>(6) = J->JabJIdx*J->Jpdd;
 }
 
-
 void EFFrame::takeData()
 {
 	prior = data->getPrior().head<8>();
 	delta = data->get_state_minus_stateZero().head<8>();
 	delta_prior =  (data->get_state() - data->getPriorZero()).head<8>();
-
-
 
 //	Vec10 state_zero =  data->get_state_zero();
 //	state_zero.segment<3>(0) = SCALE_XI_TRANS * state_zero.segment<3>(0);
@@ -67,14 +63,10 @@ void EFFrame::takeData()
 //
 //	std::cout << "state_zero: " << state_zero.transpose() << "\n";
 
-
 	assert(data->frameID != -1);
 
 	frameID = data->frameID;
 }
-
-
-
 
 void EFPoint::takeData()
 {

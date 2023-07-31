@@ -202,7 +202,6 @@ inline int makePixelStatus(Eigen::Vector3f* grads, bool* map, int w, int h, floa
 
 	int numGoodPoints;
 
-
 	if(sparsityFactor==1) numGoodPoints = gridMaxSelection<1>(grads, map, w, h, THFac);
 	else if(sparsityFactor==2) numGoodPoints = gridMaxSelection<2>(grads, map, w, h, THFac);
 	else if(sparsityFactor==3) numGoodPoints = gridMaxSelection<3>(grads, map, w, h, THFac);
@@ -235,16 +234,13 @@ inline int makePixelStatus(Eigen::Vector3f* grads, bool* map, int w, int h, floa
 
 	if((abs(newSparsity-sparsityFactor) < 1 && THFac==oldTHFac) ||
 			( quotia > 0.8 &&  1.0f / quotia > 0.8) ||
-			recsLeft == 0)
-	{
+			recsLeft == 0) {
 
 //		printf(" \n");
 		//all good
 		sparsityFactor = newSparsity;
 		return numGoodPoints;
-	}
-	else
-	{
+	} else {
 //		printf(" -> re-evaluate! \n");
 		// re-evaluate.
 		sparsityFactor = newSparsity;

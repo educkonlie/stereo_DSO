@@ -132,7 +132,7 @@ void PangolinDSOViewer::run()
 	pangolin::Var<bool> settings_showFullTrajectory("ui.FullTrajectory",false,true);
 	pangolin::Var<bool> settings_showActiveConstraints("ui.ActiveConst",true,true);
 	pangolin::Var<bool> settings_showAllConstraints("ui.AllConst",false,true);
-	pangolin::Var<bool> settings_showGroundTruth("ui.GroundTruth",true,true);
+//	pangolin::Var<bool> settings_showGroundTruth("ui.GroundTruth",true,true);
 
 	pangolin::Var<bool> settings_show3D("ui.show3D",true,true);
 	pangolin::Var<bool> settings_showLiveDepth("ui.showDepth",true,true);
@@ -252,7 +252,8 @@ void PangolinDSOViewer::run()
 	    this->settings_showKFCameras = settings_showKFCameras.Get();
 	    this->settings_showTrajectory = settings_showTrajectory.Get();
 	    this->settings_showFullTrajectory = settings_showFullTrajectory.Get();
-	    this->settings_showGroundTruth = settings_showGroundTruth.Get();
+//	    this->settings_showGroundTruth = settings_showGroundTruth.Get();
+	    this->settings_showGroundTruth = false;
 
 		setting_render_display3D = settings_show3D.Get();
 		setting_render_displayDepth = settings_showLiveDepth.Get();

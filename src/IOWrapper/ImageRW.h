@@ -27,6 +27,14 @@
 #include "util/NumType.h"
 #include "util/MinimalImage.h"
 
+
+#define CV_LOAD_IMAGE_UNCHANGED  cv::IMREAD_UNCHANGED
+#define CV_LOAD_IMAGE_GRAYSCALE  cv::IMREAD_GRAYSCALE
+#define CV_LOAD_IMAGE_COLOR      cv::IMREAD_COLOR
+#define CV_LOAD_IMAGE_ANYDEPTH   cv::IMREAD_ANYDEPTH
+#define CV_LOAD_IMAGE_ANYCOLOR   4
+#define CV_MINMAX                NORM_MINMAX
+
 namespace dso
 {
 namespace IOWrap

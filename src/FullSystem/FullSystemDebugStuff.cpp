@@ -47,34 +47,31 @@
 
 namespace dso
 {
-
-
 	void FullSystem::debugPlotTracking()
 	{
 		if(disableAllDisplay) return;
 		if(!setting_render_plotTrackingFull) return;
+
 		int wh = hG[0]*wG[0];
 
 		int idx=0;
-		for(FrameHessian* f : frameHessians)
-		{
+		for(FrameHessian* f : frameHessians) {
 			std::vector<MinimalImageB3* > images;
 
 			// make images for all frames. will be deleted by the FrameHessian's destructor.
-			for(FrameHessian* f2 : frameHessians)
+			for(FrameHessian* f2 : frameHessians) {
 				if(f2->debugImage == 0) f2->debugImage = new MinimalImageB3(wG[0], hG[0]);
-
-			for(FrameHessian* f2 : frameHessians)
-			{
-				MinimalImageB3* debugImage=f2->debugImage;
+//            FrameHessian* f2 = frameHessians.back();
+//            if (f->debugImage == 0) f->debugImage = new MinimalImageB3(wG[0], hG[0]);
+				MinimalImageB3* debugImage=f->debugImage;
 				images.push_back(debugImage);
 
 				Eigen::Vector3f* fd = f2->dI;
 
-				Vec2 affL = AffLight::fromToVecExposure(f2->ab_exposure, f->ab_exposure, f2->aff_g2l(), f->aff_g2l());
+				Vec2 affL = AffLight::fromToVecExposure(f2->ab_exposure, f->ab_exposure,
+                                                        f2->aff_g2l(), f->aff_g2l());
 
-				for(int i=0;i<wh;i++)
-				{
+				for(int i=0;i<wh;i++) {
 					// BRIGHTNESS TRANSFER
 					float colL = affL[0] * fd[i][0] + affL[1];
 					if(colL<0) colL=0; if(colL>255) colL =255;
@@ -82,29 +79,33 @@ namespace dso
 				}
 			}
 
-
-			for(PointHessian* ph : f->pointHessians)
-			{
+            // 果然last KF是没有活跃点的
+            // 应该是窗口内的7帧的活跃点，投影到
+			for(PointHessian* ph : f->pointHessians) {
 				assert(ph->status == PointHessian::ACTIVE);
-				if(ph->status == PointHessian::ACTIVE || ph->status == PointHessian::MARGINALIZED)
-				{
+				if(ph->status == PointHessian::ACTIVE || ph->status == PointHessian::MARGINALIZED) {
 					for(PointFrameResidual* r : ph->residuals)
 						r->debugPlot();
-					f->debugImage->setPixel9(ph->u+0.5, ph->v+0.5, makeRainbow3B(ph->idepth_scaled));
+                    assert(f->debugImage);
+                    assert(ph->idepth == ph->idepth_scaled);
+
+//                    std::cout << "idepth: " << ph->idepth
+//                            << " idepth_scaled: " << ph->idepth_scaled << std::endl;
+//                    std::cout << "ph->u " << ph->u << " ph->v " << ph->v << std::endl;
+					f->debugImage->setPixel9(ph->u+0.5, ph->v+0.5,
+                                             makeRainbow3B(ph->idepth_scaled));
 				}
 			}
 
-
 			char buf[100];
-			snprintf(buf, 100, "IMG %d", idx);
+			snprintf(buf, 100, "IMG_rkf %d", idx);
 			IOWrap::displayImageStitch(buf, images);
 			idx++;
 		}
 
-		IOWrap::waitKey(0);
+		IOWrap::waitKey(1000);
 
 	}
-
 
 	void FullSystem::debugPlot(std::string name)
 	{
@@ -112,12 +113,8 @@ namespace dso
 		if(!setting_render_renderWindowFrames) return;
 		std::vector<MinimalImageB3* > images;
 
-
-
-
 		float minID=0, maxID=0;
-		if((int)(freeDebugParam5+0.5f) == 7 || (debugSaveImages&&false))
-		{
+		if((int)(freeDebugParam5+0.5f) == 7 || (debugSaveImages&&false)) {
 			std::vector<float> allID;
 			for(unsigned int f=0;f<frameHessians.size();f++)
 			{
@@ -154,46 +151,28 @@ namespace dso
 
 			maxIdJetVisDebug = maxID;
 			minIdJetVisDebug = minID;
-
 		}
 
-
-
-
-
-
-
-
-
-
-
-
 		int wh = hG[0]*wG[0];
-		for(unsigned int f=0;f<frameHessians.size();f++)
-		{
+		for(unsigned int f=0;f<frameHessians.size();f++) {
 			MinimalImageB3* img = new MinimalImageB3(wG[0],hG[0]);
 			images.push_back(img);
 			//float* fd = frameHessians[f]->I;
 			Eigen::Vector3f* fd = frameHessians[f]->dI;
 
-
-			for(int i=0;i<wh;i++)
-			{
+			for(int i=0;i<wh;i++) {
 				int c = fd[i][0]*0.9f;
 				if(c>255) c=255;
 				img->at(i) = Vec3b(c,c,c);
 			}
 
-			if((int)(freeDebugParam5+0.5f) == 0)
-			{
-				for(PointHessian* ph : frameHessians[f]->pointHessians)
-				{
+			if((int)(freeDebugParam5+0.5f) == 0) {
+				for(PointHessian* ph : frameHessians[f]->pointHessians) {
 					if(ph==0) continue;
 
 					img->setPixelCirc(ph->u+0.5f, ph->v+0.5f, makeRainbow3B(ph->idepth_scaled));
 				}
-				for(PointHessian* ph : frameHessians[f]->pointHessiansMarginalized)
-				{
+				for(PointHessian* ph : frameHessians[f]->pointHessiansMarginalized) {
 					if(ph==0) continue;
 					img->setPixelCirc(ph->u+0.5f, ph->v+0.5f, makeRainbow3B(ph->idepth_scaled));
 				}
@@ -357,7 +336,163 @@ namespace dso
 
 	}
 
+void FullSystem::printEigenValLine()
+{
+	if(!setting_logStuff) return;
+	if(ef->lastHS.rows() < 12) return;
 
+
+	MatXX Hp = ef->lastHS.bottomRightCorner(ef->lastHS.cols()-CPARS,ef->lastHS.cols()-CPARS);
+	MatXX Ha = ef->lastHS.bottomRightCorner(ef->lastHS.cols()-CPARS,ef->lastHS.cols()-CPARS);
+	int n = Hp.cols()/8;
+	assert(Hp.cols()%8==0);
+
+	// sub-select
+	for(int i=0;i<n;i++)
+	{
+		MatXX tmp6 = Hp.block(i*8,0,6,n*8);
+		Hp.block(i*6,0,6,n*8) = tmp6;
+
+		MatXX tmp2 = Ha.block(i*8+6,0,2,n*8);
+		Ha.block(i*2,0,2,n*8) = tmp2;
+	}
+	for(int i=0;i<n;i++)
+	{
+		MatXX tmp6 = Hp.block(0,i*8,n*8,6);
+		Hp.block(0,i*6,n*8,6) = tmp6;
+
+		MatXX tmp2 = Ha.block(0,i*8+6,n*8,2);
+		Ha.block(0,i*2,n*8,2) = tmp2;
+	}
+
+	VecX eigenvaluesAll = ef->lastHS.eigenvalues().real();
+	VecX eigenP = Hp.topLeftCorner(n*6,n*6).eigenvalues().real();
+	VecX eigenA = Ha.topLeftCorner(n*2,n*2).eigenvalues().real();
+	VecX diagonal = ef->lastHS.diagonal();
+
+	std::sort(eigenvaluesAll.data(), eigenvaluesAll.data()+eigenvaluesAll.size());
+	std::sort(eigenP.data(), eigenP.data()+eigenP.size());
+	std::sort(eigenA.data(), eigenA.data()+eigenA.size());
+
+	int nz = std::max(100,setting_maxFrames*10);
+
+	if(eigenAllLog != 0)
+	{
+		VecX ea = VecX::Zero(nz); ea.head(eigenvaluesAll.size()) = eigenvaluesAll;
+		(*eigenAllLog) << allKeyFramesHistory.back()->id << " " <<  ea.transpose() << "\n";
+		eigenAllLog->flush();
+	}
+	if(eigenALog != 0)
+	{
+		VecX ea = VecX::Zero(nz); ea.head(eigenA.size()) = eigenA;
+		(*eigenALog) << allKeyFramesHistory.back()->id << " " <<  ea.transpose() << "\n";
+		eigenALog->flush();
+	}
+	if(eigenPLog != 0)
+	{
+		VecX ea = VecX::Zero(nz); ea.head(eigenP.size()) = eigenP;
+		(*eigenPLog) << allKeyFramesHistory.back()->id << " " <<  ea.transpose() << "\n";
+		eigenPLog->flush();
+	}
+
+	if(DiagonalLog != 0)
+	{
+		VecX ea = VecX::Zero(nz); ea.head(diagonal.size()) = diagonal;
+		(*DiagonalLog) << allKeyFramesHistory.back()->id << " " <<  ea.transpose() << "\n";
+		DiagonalLog->flush();
+	}
+
+	if(variancesLog != 0)
+	{
+		VecX ea = VecX::Zero(nz); ea.head(diagonal.size()) = ef->lastHS.inverse().diagonal();
+		(*variancesLog) << allKeyFramesHistory.back()->id << " " <<  ea.transpose() << "\n";
+		variancesLog->flush();
+	}
+
+	std::vector<VecX> &nsp = ef->lastNullspaces_forLogging;
+	(*nullspacesLog) << allKeyFramesHistory.back()->id << " ";
+	for(unsigned int i=0;i<nsp.size();i++)
+		(*nullspacesLog) << nsp[i].dot(ef->lastHS * nsp[i]) << " " << nsp[i].dot(ef->lastbS) << " " ;
+	(*nullspacesLog) << "\n";
+	nullspacesLog->flush();
+
+}
+
+void FullSystem::printFrameLifetimes()
+{
+	if(!setting_logStuff) return;
+
+	boost::unique_lock<boost::mutex> lock(trackMutex);
+
+	std::ofstream* lg = new std::ofstream();
+	lg->open("logs/lifetimeLog.txt", std::ios::trunc | std::ios::out);
+	lg->precision(15);
+
+	for(FrameShell* s : allFrameHistory) {
+		(*lg) << s->id
+			<< " " << s->marginalizedAt
+			<< " " << s->statistics_goodResOnThis
+			<< " " << s->statistics_outlierResOnThis
+			<< " " << s->movedByOpt;
+		(*lg) << "\n";
+	}
+
+	lg->close();
+	delete lg;
+}
+
+
+void FullSystem::printEvalLine()
+{
+	return;
+}
+
+void FullSystem::printLogLine()
+{
+	if(frameHessians.size()==0) return;
+
+    if(!setting_debugout_runquiet)
+        printf("LOG %d: %.3f fine. Res: %d A, %d L, %d M; (%'d / %'d) forceDrop. a=%f, b=%f. Window %d (%d)\n",
+                allKeyFramesHistory.back()->id,
+                statistics_lastFineTrackRMSE,
+                ef->resInA,
+                ef->resInL,
+                ef->resInM,
+                (int)statistics_numForceDroppedResFwd,
+                (int)statistics_numForceDroppedResBwd,
+                allKeyFramesHistory.back()->aff_g2l.a,
+                allKeyFramesHistory.back()->aff_g2l.b,
+                frameHessians.back()->shell->id - frameHessians.front()->shell->id,
+                (int)frameHessians.size());
+
+
+	if(!setting_logStuff) return;
+
+	if(numsLog != 0)
+	{
+		(*numsLog) << allKeyFramesHistory.back()->id << " "  <<
+				statistics_lastFineTrackRMSE << " "  <<
+				(int)statistics_numCreatedPoints << " "  <<
+				(int)statistics_numActivatedPoints << " "  <<
+				(int)statistics_numDroppedPoints << " "  <<
+				(int)statistics_lastNumOptIts << " "  <<
+				ef->resInA << " "  <<
+				ef->resInL << " "  <<
+				ef->resInM << " "  <<
+				statistics_numMargResFwd << " "  <<
+				statistics_numMargResBwd << " "  <<
+				statistics_numForceDroppedResFwd << " "  <<
+				statistics_numForceDroppedResBwd << " "  <<
+				frameHessians.back()->aff_g2l().a << " "  <<
+				frameHessians.back()->aff_g2l().b << " "  <<
+				frameHessians.back()->shell->id - frameHessians.front()->shell->id << " "  <<
+				(int)frameHessians.size() << " "  << "\n";
+		numsLog->flush();
+	}
+
+
+
+}
 
 
 

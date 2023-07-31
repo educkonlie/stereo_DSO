@@ -117,7 +117,7 @@ private:
 	bool settings_showFullTrajectory;
 	bool settings_showActiveConstraints;
 	bool settings_showAllConstraints;
-	bool settings_showGroundTruth;
+	bool settings_showGroundTruth = false;
 
 	float settings_scaledVarTH;
 	float settings_absVarTH;

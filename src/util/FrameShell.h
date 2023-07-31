@@ -31,8 +31,7 @@ namespace dso
 {
 
 
-class FrameShell
-{
+class FrameShell {
 public:
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 	int id; 			// INTERNAL ID, starting at zero.

@@ -48,35 +48,30 @@ public:
 	CoarseTracker(int w, int h);
 	~CoarseTracker();
 
-	bool trackNewestCoarse(
+	bool track(
 			FrameHessian* newFrameHessian,
 			SE3 &lastToNew_out, AffLight &aff_g2l_out,
 			int coarsestLvl, Vec5 minResForAbort,
 			IOWrap::Output3DWrapper* wrap=0);
-	
+
+    void makeCoarseDepthForFirstFrame();
 	void setCTRefForFirstFrame(
 			std::vector<FrameHessian*> frameHessians);
 
 	void setCoarseTrackingRef(
-			std::vector<FrameHessian*> frameHessians, FrameHessian* fh_right, CalibHessian Hcalib);
+			std::vector<FrameHessian*> frameHessians, CalibHessian Hcalib, bool first);
 
-	void makeCoarseDepthForFirstFrame(FrameHessian* fh);
-	
 	void makeK(
 			CalibHessian* HCalib);
 
 	bool debugPrint, debugPlot;
 
 	Mat33f K[PYR_LEVELS];
-	Mat33f Ki[PYR_LEVELS];
+	Mat33f Ki[PYR_LEVELS]; //  K.inverse()
 	float fx[PYR_LEVELS];
 	float fy[PYR_LEVELS];
-	float fxi[PYR_LEVELS];
-	float fyi[PYR_LEVELS];
 	float cx[PYR_LEVELS];
 	float cy[PYR_LEVELS];
-	float cxi[PYR_LEVELS];
-	float cyi[PYR_LEVELS];
 	int w[PYR_LEVELS];
 	int h[PYR_LEVELS];
 
@@ -88,25 +83,27 @@ public:
 	FrameHessian* newFrame;
 	int refFrameID;
 
-	// act as pure ouptut
+	// act as pure output
 	Vec5 lastResiduals;
 	Vec3 lastFlowIndicators;
 	double firstCoarseRMSE;
 private:
 
+    void normalize_pyramid();
 
-	void makeCoarseDepthL0(std::vector<FrameHessian*> frameHessians, FrameHessian* fh_right, CalibHessian Hcalib);
+	void makeCoarseDepthL0(std::vector<FrameHessian*> frameHessians, CalibHessian Hcalib, bool first);
 	float* idepth[PYR_LEVELS];
 	float* weightSums[PYR_LEVELS];
 	float* weightSums_bak[PYR_LEVELS];
 
-
-	Vec6 calcResAndGS(int lvl, Mat88 &H_out, Vec8 &b_out, const SE3 &refToNew, AffLight aff_g2l, float cutoffTH);
+//	Vec6 calcResAndGS(int lvl, Mat88 &H_out, Vec8 &b_out, const SE3 &refToNew, AffLight aff_g2l, float cutoffTH);
 	Vec6 calcRes(int lvl, const SE3 &refToNew, AffLight aff_g2l, float cutoffTH);
+    Vec6 calcRes_MT(int lvl, const SE3 &refToNew, AffLight aff_g2l, float cutoffTH);
 	void calcGSSSE(int lvl, Mat88 &H_out, Vec8 &b_out, const SE3 &refToNew, AffLight aff_g2l);
-	void calcGS(int lvl, Mat88 &H_out, Vec8 &b_out, const SE3 &refToNew, AffLight aff_g2l);
+//	void calcGS(int lvl, Mat88 &H_out, Vec8 &b_out, const SE3 &refToNew, AffLight aff_g2l);
 
 	// pc buffers
+    // point camera
 	float* pc_u[PYR_LEVELS];
 	float* pc_v[PYR_LEVELS];
 	float* pc_idepth[PYR_LEVELS];
@@ -124,9 +121,7 @@ private:
 	float* buf_warped_refColor;
 	int buf_warped_n;
 
-
     std::vector<float*> ptrToDelete;
-
 
 	Accumulator9 acc;
 };

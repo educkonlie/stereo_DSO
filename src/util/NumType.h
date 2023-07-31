@@ -40,7 +40,7 @@ namespace dso
 
 
 #define MAX_RES_PER_POINT 8
-#define NUM_THREADS 6
+#define NUM_THREADS 8
 
 
 #define todouble(x) (x).cast<double>()
@@ -49,19 +49,18 @@ namespace dso
 typedef Sophus::SE3d SE3;
 typedef Sophus::Sim3d Sim3;
 typedef Sophus::SO3d SO3;
-
-
-
-#define CPARS 4
-
+#define RKF_BASELINE
+#ifdef RKF_BASELINE
+#define CPARS 5    // 似乎是相机内参
+#else
+#define CPARS 5    // 似乎是相机内参
+#endif
 
 typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatXX;
-typedef Eigen::Matrix<double,CPARS,CPARS> MatCC;
-#define MatToDynamic(x) MatXX(x)
+//typedef Eigen::Matrix<double,CPARS,CPARS> MatCC;
+//#define MatToDynamic(x) MatXX(x)
 
-
-
-typedef Eigen::Matrix<double,CPARS,10> MatC10;
+//typedef Eigen::Matrix<double,CPARS,10> MatC10;
 typedef Eigen::Matrix<double,10,10> Mat1010;
 typedef Eigen::Matrix<double,13,13> Mat1313;
 
@@ -74,9 +73,9 @@ typedef Eigen::Matrix<double,4,2> Mat42;
 typedef Eigen::Matrix<double,3,3> Mat33;
 typedef Eigen::Matrix<double,2,2> Mat22;
 typedef Eigen::Matrix<double,8,CPARS> Mat8C;
-typedef Eigen::Matrix<double,CPARS,8> MatC8;
-typedef Eigen::Matrix<float,8,CPARS> Mat8Cf;
-typedef Eigen::Matrix<float,CPARS,8> MatC8f;
+//typedef Eigen::Matrix<double,CPARS,8> MatC8;
+//typedef Eigen::Matrix<float,8,CPARS> Mat8Cf;
+//typedef Eigen::Matrix<float,CPARS,8> MatC8f;
 
 typedef Eigen::Matrix<double,8,8> Mat88;
 typedef Eigen::Matrix<double,7,7> Mat77;
@@ -85,6 +84,7 @@ typedef Eigen::Matrix<double,CPARS,1> VecC;
 typedef Eigen::Matrix<float,CPARS,1> VecCf;
 typedef Eigen::Matrix<double,13,1> Vec13;
 typedef Eigen::Matrix<double,10,1> Vec10;
+typedef Eigen::Matrix<double,16,1> Vec16;
 typedef Eigen::Matrix<double,9,1> Vec9;
 typedef Eigen::Matrix<double,8,1> Vec8;
 typedef Eigen::Matrix<double,7,1> Vec7;
@@ -159,13 +159,8 @@ typedef Eigen::Matrix<double,14,14> Mat1414;
 typedef Eigen::Matrix<double,14,1> Vec14;
 
 
-
-
-
-
 // transforms points from one frame to another.
-struct AffLight
-{
+struct AffLight {
 	AffLight(double a_, double b_) : a(a_), b(b_) {};
 	AffLight() : a(0), b(0) {};
 
@@ -174,8 +169,7 @@ struct AffLight
 
 	static Vec2 fromToVecExposure(float exposureF, float exposureT, AffLight g2F, AffLight g2T)
 	{
-		if(exposureF==0 || exposureT==0)
-		{
+		if(exposureF==0 || exposureT==0) {
 			exposureT = exposureF = 1;
 			//printf("got exposure value of 0! please choose the correct model.\n");
 			//assert(setting_brightnessTransferFunc < 2);
@@ -186,8 +180,7 @@ struct AffLight
 		return Vec2(a,b);
 	}
 
-	Vec2 vec()
-	{
+	Vec2 vec() {
 		return Vec2(a,b);
 	}
 };

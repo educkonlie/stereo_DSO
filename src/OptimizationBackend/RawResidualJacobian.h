@@ -29,12 +29,12 @@
 
 namespace dso
 {
-struct RawResidualJacobian
-{
+struct RawResidualJacobian {
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 	// ================== new structure: save independently =============.
 	EIGEN_ALIGN16 VecNRf resF;
 
+    // xi -> [x, y]^t
 	// the two rows of d[x,y]/d[xi].
 	EIGEN_ALIGN16 Vec6f Jpdxi[2];			// 2x6
 
@@ -42,14 +42,17 @@ struct RawResidualJacobian
 	EIGEN_ALIGN16 VecCf Jpdc[2];			// 2x4
 
 	// the two rows of d[x,y]/d[idepth].
+    // ---逆深度的变化对重投影误差的贡献
 	EIGEN_ALIGN16 Vec2f Jpdd;				// 2x1
 
 	// the two columns of d[r]/d[x,y].
+    // 2维线性出9维
+    // r被表示为9维
+    // -----其实是8维，8个点，8个残差
 	EIGEN_ALIGN16 VecNRf JIdx[2];			// 9x2
 
 	// = the two columns of d[r] / d[ab]
 	EIGEN_ALIGN16 VecNRf JabF[2];			// 9x2
-
 
 	// = JIdx^T * JIdx (inner product). Only as a shorthand.
 	EIGEN_ALIGN16 Mat22f JIdx2;				// 2x2
@@ -57,7 +60,6 @@ struct RawResidualJacobian
 	EIGEN_ALIGN16 Mat22f JabJIdx;			// 2x2
 	// = Jab^T * Jab (inner product). Only as a shorthand.
 	EIGEN_ALIGN16 Mat22f Jab2;			// 2x2
-
 };
 }
 

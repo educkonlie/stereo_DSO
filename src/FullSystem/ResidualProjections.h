@@ -32,7 +32,6 @@
 namespace dso
 {
 
-
 EIGEN_STRONG_INLINE float derive_idepth(
 		const Vec3f &t, const float &u, const float &v,
 		const int &dx, const int &dy, const float &dxInterp,
@@ -41,8 +40,6 @@ EIGEN_STRONG_INLINE float derive_idepth(
 	return (dxInterp*drescale * (t[0]-t[2]*u)
 			+ dyInterp*drescale * (t[1]-t[2]*v))*SCALE_IDEPTH;
 }
-
-
 
 EIGEN_STRONG_INLINE bool projectPoint(
 		const float &u_pt,const float &v_pt,
@@ -55,8 +52,6 @@ EIGEN_STRONG_INLINE bool projectPoint(
 	Kv = ptp[1] / ptp[2];
 	return Ku>1.1f && Kv>1.1f && Ku<wM3G && Kv<hM3G;
 }
-
-
 
 EIGEN_STRONG_INLINE bool projectPoint(
 		const float &u_pt,const float &v_pt,
@@ -85,9 +80,6 @@ EIGEN_STRONG_INLINE bool projectPoint(
 
 	return Ku>1.1f && Kv>1.1f && Ku<wM3G && Kv<hM3G;
 }
-
-
-
 
 }
 

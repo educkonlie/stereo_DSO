@@ -870,7 +870,10 @@ void Undistort::readFromFile(const char* configFileName, int nPars, std::string 
     else
     {
         printf("Out: Failed to Read Baseline... can not do stereo. \n");
+        printf("Out: but still used default baseline value [0.53715]. \n");
+        baseline = 0.53715;
     }
+
 
     remapX = new float[w*h];
     remapY = new float[w*h];
