@@ -117,8 +117,8 @@ void settingsDefault(int preset)
 //        setting_desiredPointDensity = 12000;
 
 #ifdef DSO_LITE
-setting_minFrames = 3;
-setting_maxFrames = 4;
+setting_minFrames = 5;
+setting_maxFrames = 7;
 #else
 //		setting_minFrames = 5;
         setting_minFrames = 3;

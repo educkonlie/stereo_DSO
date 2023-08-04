@@ -1119,10 +1119,7 @@ void FullSystem::mappingLoop()
 					assert(fh->shell->trackingRef != 0);
 					fh->shell->camToWorld = fh->shell->trackingRef->camToWorld * fh->shell->camToTrackingRef;
 					fh->setEvalPT_scaled(fh->shell->camToWorld.inverse(),fh->shell->aff_g2l);
-#ifdef DSO_LITE
-//                    fh->frame_right->setEvalPT_scaled(stereo_warp_Rt * (fh->shell->camToWorld.inverse()),
-//                                                      fh->shell->aff_g2l);
-#endif
+
 				}
 				delete fh;
 			}
@@ -1165,10 +1162,6 @@ void FullSystem::makeNonKeyFrame( FrameHessian* fh)
 //               fh->shell->id, fh->shell->trackingRef->id);
 		fh->shell->camToWorld = fh->shell->trackingRef->camToWorld * fh->shell->camToTrackingRef;
 		fh->setEvalPT_scaled(fh->shell->camToWorld.inverse(),fh->shell->aff_g2l);
-#ifdef DSO_LITE
-//        fh->frame_right->setEvalPT_scaled(stereo_warp_Rt * (fh->shell->camToWorld.inverse()),
-//                                          fh->shell->aff_g2l);
-#endif
 	}
 
     // 通过非关键帧将窗口内的未成熟点成熟
@@ -1187,13 +1180,8 @@ void FullSystem::makeKeyFrame( FrameHessian* fh)
 //        printf("make key frame........fh[%d].........trackingRef[%d]........\n",
 //               fh->shell->id,fh->shell->trackingRef->id);
 		fh->shell->camToWorld = fh->shell->trackingRef->camToWorld * fh->shell->camToTrackingRef;
-#ifdef DSO_LITE
-        fh->setEvalPT_scaled(fh->shell->camToWorld.inverse(),fh->shell->aff_g2l);
-//        fh->frame_right->setEvalPT_scaled( stereo_warp_Rt * (fh->shell->camToWorld.inverse()),
-//                                          fh->shell->aff_g2l);
-#else
+
 		fh->setEvalPT_scaled(fh->shell->camToWorld.inverse(),fh->shell->aff_g2l);
-#endif
 	}
 // 	LOG(INFO)<<"make keyframe";
 
@@ -1289,6 +1277,7 @@ void FullSystem::makeKeyFrame( FrameHessian* fh)
 	float rmse = optimize(setting_maxOptIterations);
     std::cout << "optimize end" << std::endl;
 // 	LOG(INFO)<<"rmse: "<<rmse;
+    std::cout << "rmse: " << rmse << std::endl;
 
 	// =========================== Figure Out if INITIALIZATION FAILED =========================
 	if(allKeyFramesHistory.size() <= 4) {
@@ -1380,9 +1369,7 @@ void FullSystem::initializeFromInitializer(FrameHessian* newFrame)
 	firstFrame->frame_right->frameID = 1000000+allKeyFramesHistory.size();
 	allKeyFramesHistory.push_back(firstFrame->shell);
 	ef->insertFrame(firstFrame, &Hcalib);
-#ifdef DSO_LITE
-//    ef->insertFrame(firstFrame->frame_right, &Hcalib);
-#endif
+
 	setPrecalcValues();
 
     FrameHessian* firstFrameRight = coarseInitializer->firstFrame->frame_right;
@@ -1493,10 +1480,7 @@ void FullSystem::initializeFromInitializer(FrameHessian* newFrame)
 		firstFrame->shell->aff_g2l = AffLight(0,0);
 		firstFrame->setEvalPT_scaled(firstFrame->shell->camToWorld.inverse(),
                                      firstFrame->shell->aff_g2l);
-#ifdef DSO_LITE
-//        firstFrame->frame_right->setEvalPT_scaled(stereo_warp_Rt * (firstFrame->shell->camToWorld.inverse()),
-//                                                  firstFrame->shell->aff_g2l);
-#endif
+
         // 关联0 -> first
 		firstFrame->shell->trackingRef=0;
 		firstFrame->shell->camToTrackingRef = SE3();
@@ -1505,10 +1489,7 @@ void FullSystem::initializeFromInitializer(FrameHessian* newFrame)
 		newFrame->shell->camToWorld = firstToNew.inverse();
 		newFrame->shell->aff_g2l = AffLight(0,0);
 		newFrame->setEvalPT_scaled(newFrame->shell->camToWorld.inverse(),newFrame->shell->aff_g2l);
-#ifdef DSO_LITE
-//        newFrame->frame_right->setEvalPT_scaled(stereo_warp_Rt * (newFrame->shell->camToWorld.inverse()),
-//                                                newFrame->shell->aff_g2l);
-#endif
+
         //关联first -> new
 		newFrame->shell->trackingRef = firstFrame->shell;
         // 已经有了第1帧的相对位姿，这里好像有点问题？没有旋转。
@@ -1551,9 +1532,7 @@ void FullSystem::setPrecalcValues()
 {
 	for(FrameHessian* fh : frameHessians) {
 		fh->targetPrecalc.resize(frameHessians.size());
-#ifdef DSO_LITE
-//        fh->targetPrecalc_right.resize(frameHessians.size());
-#endif
+
 		for(unsigned int i=0;i<frameHessians.size();i++) {
             fh->targetPrecalc[i].set(fh, frameHessians[i], &Hcalib);
 //            fh->targetPrecalc_right[i].set(fh, frameHessians[i]->frame_right, &Hcalib);

@@ -199,11 +199,11 @@ extern SE3 stereo_warp_Rt;
 #define patternP staticPattern[8]
 #define patternPadding 2
 
-//#define DSO_LITE
+#define DSO_LITE
 //#define MY_LAMBDA
 #define RKF
 // 内参优化加上baseline
 // linearize_stereo里加上baseline的雅克比，linearize里是另外四个
-#define RKF_BASELINE
+//#define RKF_BASELINE
 
 }

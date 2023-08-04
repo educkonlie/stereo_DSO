@@ -49,11 +49,11 @@ namespace dso
 typedef Sophus::SE3d SE3;
 typedef Sophus::Sim3d Sim3;
 typedef Sophus::SO3d SO3;
-#define RKF_BASELINE
+//#define RKF_BASELINE
 #ifdef RKF_BASELINE
 #define CPARS 5    // 似乎是相机内参
 #else
-#define CPARS 5    // 似乎是相机内参
+#define CPARS 4    // 似乎是相机内参
 #endif
 
 typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatXX;
@@ -101,6 +101,7 @@ typedef Eigen::Matrix<float,2,2> Mat22f;
 typedef Eigen::Matrix<float,3,1> Vec3f;
 typedef Eigen::Matrix<float,2,1> Vec2f;
 typedef Eigen::Matrix<float,6,1> Vec6f;
+typedef Eigen::Matrix<float,5,1> Vec5f;
 
 
 

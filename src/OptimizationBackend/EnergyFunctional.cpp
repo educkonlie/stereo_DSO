@@ -263,6 +263,9 @@ void EnergyFunctional::resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT)
 
 	Mat18f* xAd = new Mat18f[nFrames*nFrames];
 	VecCf cstep = xF.head<CPARS>();
+
+//    std::cout << "....cstep...." << cstep.matrix() << std::endl;
+
 	for(EFFrame* h : frames) {
 		h->data->step.head<8>() = - x.segment<8>(CPARS+8*h->idx);
 		h->data->step.tail<2>().setZero();
@@ -293,13 +296,20 @@ void EnergyFunctional::resubstituteFPt(
 			continue;
 		}
 		float b = p->bdSumF;
+//        std::cout << " 1 b: " << b << std::endl;
+//        std::cout << " xc: " << xc.matrix() << std::endl;
 		b -= xc.dot(p->Hcd_accAF + p->Hcd_accLF);
+//        std::cout << " 2 b: " << b << std::endl;
 
 		for(EFResidual* r : p->residualsAll) {
 			if(!r->isActive()) continue;
 			b -= xAd[r->hostIDX*nFrames + r->targetIDX] * r->JpJdF;
+
+//            std::cout << " 3 b: " << b << std::endl;
 		}
 
+//        assert(std::isfinite(b));
+//        assert(std::isfinite(p->HdiF));
 		p->data->step = - b*p->HdiF;
 		assert(std::isfinite(p->data->step));
 	}
@@ -412,6 +422,7 @@ EFResidual* EnergyFunctional::insertResidual(PointFrameResidual* r)
         return efr;
     }
 #else
+//  存雅克比
 	EFResidual* efr = new EFResidual(r, r->point->efPoint, r->host->efFrame, r->target->efFrame);
 	efr->idxInAll = r->point->efPoint->residualsAll.size();
 	r->point->efPoint->residualsAll.push_back(efr);
@@ -847,6 +858,7 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 
 	lastX = x;
 // 	LOG(INFO)<<"x: "<<x.transpose();
+std::cout <<"....x: " << x.transpose() << std::endl;
 // 	exit(1);
 
 	//resubstituteF(x, HCalib);

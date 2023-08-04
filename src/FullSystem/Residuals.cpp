@@ -83,20 +83,25 @@ double PointFrameResidual::linearizeStereo(CalibHessian* HCalib)
 
 	FrameFramePrecalc* precalc = &(host->targetPrecalc[target->idx]);
 	float energyLeft=0;
+    // 爆掉了，应该是被Marg掉了
 	const Eigen::Vector3f* dIl = target->frame_right->dI;
+    if (dIl == NULL)
+        return 333.0;
 	//const float* const Il = target->I;
-	const Mat33f &PRE_KRKiTlr = precalc->PRE_KRKiTlr;
-	const Vec3f &PRE_KtTlr = precalc->PRE_KtTlr;
-	const Mat33f &PRE_RTlr_0 = precalc->PRE_RTlr_0;
-	const Vec3f &PRE_tTlr_0 = precalc->PRE_tTlr_0;
+    Vec3f trans_baseline = Vec3f::Zero();
+    trans_baseline << -baseline, 0, 0;
+	const Mat33f &PRE_KRKiTlr = precalc->PRE_KRKiTll;
+	const Vec3f &PRE_KtTlr = precalc->PRE_KtTll + trans_baseline;
+	const Mat33f &PRE_RTlr_0 = precalc->PRE_RTll_0;
+	const Vec3f &PRE_tTlr_0 = precalc->PRE_tTll_0 + trans_baseline;
 	const float * const color = point->color;
 	const float * const weights = point->weights;
 
 	Vec2f affLL = precalc->PRE_aff_mode;
 	float b0 = precalc->PRE_b0_mode;
 
-	Vec6f d_xi_x, d_xi_y;
-	Vec4f d_C_x, d_C_y;
+//	Vec6f d_xi_x, d_xi_y;
+//	Vec4f d_C_x, d_C_y;
 	float d_d_x, d_d_y;
 
 	{
@@ -114,41 +119,6 @@ double PointFrameResidual::linearizeStereo(CalibHessian* HCalib)
 		d_d_x = drescale * (PRE_tTlr_0[0]-PRE_tTlr_0[2]*u)*SCALE_IDEPTH*HCalib->fxl();
 		d_d_y = drescale * (PRE_tTlr_0[1]-PRE_tTlr_0[2]*v)*SCALE_IDEPTH*HCalib->fyl();
 
-		// diff calib
-		d_C_x[2] = drescale*(PRE_RTlr_0(2,0)*u-PRE_RTlr_0(0,0));
-		d_C_x[3] = HCalib->fxl() * drescale*(PRE_RTlr_0(2,1)*u-PRE_RTlr_0(0,1)) * HCalib->fyli();
-		d_C_x[0] = KliP[0]*d_C_x[2];
-		d_C_x[1] = KliP[1]*d_C_x[3];
-
-		d_C_y[2] = HCalib->fyl() * drescale*(PRE_RTlr_0(2,0)*v-PRE_RTlr_0(1,0)) * HCalib->fxli();
-		d_C_y[3] = drescale*(PRE_RTlr_0(2,1)*v-PRE_RTlr_0(1,1));
-		d_C_y[0] = KliP[0]*d_C_y[2];
-		d_C_y[1] = KliP[1]*d_C_y[3];
-
-		d_C_x[0] = (d_C_x[0]+u)*SCALE_F;
-		d_C_x[1] *= SCALE_F;
-		d_C_x[2] = (d_C_x[2]+1)*SCALE_C;
-		d_C_x[3] *= SCALE_C;
-
-		d_C_y[0] *= SCALE_F;
-		d_C_y[1] = (d_C_y[1]+v)*SCALE_F;
-		d_C_y[2] *= SCALE_C;
-		d_C_y[3] = (d_C_y[3]+1)*SCALE_C;
-
-
-		d_xi_x[0] = new_idepth*HCalib->fxl();
-		d_xi_x[1] = 0;
-		d_xi_x[2] = -new_idepth*u*HCalib->fxl();
-		d_xi_x[3] = -u*v*HCalib->fxl();
-		d_xi_x[4] = (1+u*u)*HCalib->fxl();
-		d_xi_x[5] = -v*HCalib->fxl();
-
-		d_xi_y[0] = 0;
-		d_xi_y[1] = new_idepth*HCalib->fyl();
-		d_xi_y[2] = -new_idepth*v*HCalib->fyl();
-		d_xi_y[3] = -(1+v*v)*HCalib->fyl();
-		d_xi_y[4] = u*v*HCalib->fyl();
-		d_xi_y[5] = u*HCalib->fyl();
 	}
 	{
 		J->Jpdxi[0] = Vec6f::Zero();
@@ -282,7 +252,11 @@ double PointFrameResidual::linearize(CalibHessian* HCalib)
 	float b0 = precalc->PRE_b0_mode;
 
 	Vec6f d_xi_x, d_xi_y;
+#ifdef RKF_BASELINE
+    Vec5f d_C_x, d_C_y;
+#else
 	Vec4f d_C_x, d_C_y;
+#endif
 	float d_d_x, d_d_y;
 	{
 		float drescale, u, v, new_idepth;
@@ -321,6 +295,10 @@ double PointFrameResidual::linearize(CalibHessian* HCalib)
 		d_C_y[1] = (d_C_y[1]+v)*SCALE_F;
 		d_C_y[2] *= SCALE_C;
 		d_C_y[3] = (d_C_y[3]+1)*SCALE_C;
+#ifdef RKF_BASELINE
+        d_C_x[4] = 1e-3;
+        d_C_y[4] = 1e-3;
+#endif
 
         // x对xi的导数
 		d_xi_x[0] = new_idepth*HCalib->fxl();
@@ -542,9 +520,14 @@ double PointFrameResidual::linearizeStereo(CalibHessian* HCalib)
 		J->Jpdxi[1] = Vec6f::Zero();
 
         //--------重投影误差 = f(相机内参)
-        //TODO 这里可以加上对于baseline的优化
-		J->Jpdc[0] = Vec4f::Zero();
-		J->Jpdc[1] = Vec4f::Zero();
+        //DONE 这里可以加上对于baseline的优化
+#ifdef RKF_BASELINE
+		J->Jpdc[0] = Vec5f::Zero();
+		J->Jpdc[1] = Vec5f::Zero();
+#else
+        J->Jpdc[0] = Vec4f::Zero();
+        J->Jpdc[1] = Vec4f::Zero();
+#endif
 
         //---------逆深度构成右目约束的被优化变量
         //---------重投影误差 = f(逆深度）

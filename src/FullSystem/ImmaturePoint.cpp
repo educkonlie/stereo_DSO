@@ -333,6 +333,7 @@ ImmaturePointStatus ImmaturePoint::traceOn(FrameHessian* frame,const Mat33f &hos
 		} else {
 			gnStepsGood++;
 
+            // ----求解H, b，因为x是一维，所以不需要求解器
 			float step = -gnstepsize*b/H;
 			if(step < -0.5) step = -0.5;
 			else if(step > 0.5) step=0.5;
