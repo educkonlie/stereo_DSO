@@ -147,17 +147,13 @@ void FullSystem::marginalizeFrame(FrameHessian* frame)
 	ef->marginalizeFrame(frame->efFrame);
 	// drop all observations of existing points in that frame.
 
-	for(FrameHessian* fh : frameHessians)
-	{
+	for(FrameHessian* fh : frameHessians) {
 		if(fh==frame) continue;
 
-		for(PointHessian* ph : fh->pointHessians)
-		{
-			for(unsigned int i=0;i<ph->residuals.size();i++)
-			{
+		for(PointHessian* ph : fh->pointHessians) {
+			for(unsigned int i=0;i<ph->residuals.size();i++) {
 				PointFrameResidual* r = ph->residuals[i];
-				if(r->target == frame)
-				{
+				if(r->target == frame) {
 					if(ph->lastResiduals[0].first == r)
 						ph->lastResiduals[0].first=0;
 					else if(ph->lastResiduals[1].first == r)

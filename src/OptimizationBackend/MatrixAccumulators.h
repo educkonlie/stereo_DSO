@@ -34,8 +34,7 @@ namespace dso
 
 
 template<int i, int j>
-class AccumulatorXX
-{
+class AccumulatorXX {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
@@ -59,6 +58,7 @@ public:
   }
 
 
+  // L * w * R^T
   inline void update(const Eigen::Matrix<float,i,1> &L, const Eigen::Matrix<float,j,1> &R, float w)
   {
 	  A += w*L*R.transpose();
@@ -88,8 +88,7 @@ private:
   }
 };
 
-class Accumulator11
-{
+class Accumulator11 {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
@@ -147,6 +146,7 @@ public:
 
 
 private:
+    // 累加到1000个就集体累加到下一层去
   EIGEN_ALIGN16 float SSEData[4*1];
   EIGEN_ALIGN16 float SSEData1k[4*1];
   EIGEN_ALIGN16 float SSEData1m[4*1];
@@ -155,15 +155,15 @@ private:
 
   void shiftUp(bool force)
   {
-	  if(numIn1 > 1000 || force)
-	  {
+      // 每1000个SSEData搜集完成，就累加到SSEData1k （一千个数据）
+	  if(numIn1 > 1000 || force) {
 		  _mm_store_ps(SSEData1k, _mm_add_ps(_mm_load_ps(SSEData),_mm_load_ps(SSEData1k)));
 		  numIn1k+=numIn1; numIn1=0;
 		  memset(SSEData,0, sizeof(float)*4*1);
 	  }
 
-	  if(numIn1k > 1000 || force)
-	  {
+      // 每1000个SSEData1k搜集完成，就累加到SSEData1m （一百万个数据）
+	  if(numIn1k > 1000 || force) {
 		  _mm_store_ps(SSEData1m, _mm_add_ps(_mm_load_ps(SSEData1k),_mm_load_ps(SSEData1m)));
 		  numIn1m+=numIn1k;  numIn1k=0;
 		  memset(SSEData1k,0, sizeof(float)*4*1);
@@ -175,8 +175,7 @@ private:
 
 
 template<int i>
-class AccumulatorX
-{
+class AccumulatorX {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 

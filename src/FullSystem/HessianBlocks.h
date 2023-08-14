@@ -463,8 +463,7 @@ struct PointHessian {
 	inline bool isOOB(const std::vector<FrameHessian*>& toKeep, const std::vector<FrameHessian*>& toMarg) const
 	{
 		int visInToMarg = 0;
-		for(PointFrameResidual* r : residuals)
-		{
+		for(PointFrameResidual* r : residuals) {
 			if(r->state_state != ResState::IN) continue;
 			for(FrameHessian* k : toMarg)
 				if(r->target == k) visInToMarg++;

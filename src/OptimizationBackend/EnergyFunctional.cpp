@@ -134,18 +134,16 @@ EnergyFunctional::EnergyFunctional()
 }
 EnergyFunctional::~EnergyFunctional()
 {
-	for(EFFrame* f : frames)
-	{
-		for(EFPoint* p : f->points)
-		{
-			for(EFResidual* r : p->residualsAll)
-			{
+	for(EFFrame* f : frames) {
+		for(EFPoint* p : f->points) {
+			for(EFResidual* r : p->residualsAll) {
 				r->data->efResidual=0;
 				delete r;
 			}
 			p->data->efPoint=0;
 			delete p;
 		}
+        // f -> data -> efFrame即f自己
 		f->data->efFrame=0;
 		delete f;
 	}
@@ -165,29 +163,28 @@ EnergyFunctional::~EnergyFunctional()
 	delete accSSE_bot;
 }
 
-
-
-
+// 从前端读取数据，设置f -> delta, f -> delta_prior, p -> deltaF
 void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
 {
 	if(adHTdeltaF != 0) delete[] adHTdeltaF;
 	adHTdeltaF = new Mat18f[nFrames*nFrames];
 	for(int h=0;h<nFrames;h++)
-		for(int t=0;t<nFrames;t++)
-		{
+		for(int t=0;t<nFrames;t++) {
 			int idx = h+t*nFrames;
 			adHTdeltaF[idx] = frames[h]->data->get_state_minus_stateZero().head<8>().cast<float>().transpose() * adHostF[idx]
 					        +frames[t]->data->get_state_minus_stateZero().head<8>().cast<float>().transpose() * adTargetF[idx];
 		}
 
 	cDeltaF = HCalib->value_minus_value_zero.cast<float>();
-	for(EFFrame* f : frames)
-	{
+	for(EFFrame* f : frames) {
 		f->delta = f->data->get_state_minus_stateZero().head<8>();
 		f->delta_prior = (f->data->get_state() - f->data->getPriorZero()).head<8>();
 
-		for(EFPoint* p : f->points)
-			p->deltaF = p->data->idepth-p->data->idepth_zero;
+		for(EFPoint* p : f->points) {
+            p->deltaF = p->data->idepth - p->data->idepth_zero;
+            // 逆深度其实并没有用FEJ，所以delta === 0.0
+            assert(p -> deltaF < 0.00001);
+        }
 	}
 
 	EFDeltaValid = true;
@@ -196,62 +193,36 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
 // accumulates & shifts L.
 void EnergyFunctional::accumulateAF_MT(MatXX &H, VecX &b, bool MT)
 {
-	if(MT) {
-		red->reduce(boost::bind(&AccumulatedTopHessianSSE::setZero, accSSE_top_A, nFrames,  _1, _2, _3, _4), 0, 0, 0);
-		red->reduce(boost::bind(&AccumulatedTopHessianSSE::addPointsInternal<0>,
-				accSSE_top_A, &allPoints, this,  _1, _2, _3, _4), 0, allPoints.size(), 50);
-		accSSE_top_A->stitchDoubleMT(red,H,b,this,false,true);
-		resInA = accSSE_top_A->nres[0];
-	} else {
-		accSSE_top_A->setZero(nFrames);
-		for(EFFrame* f : frames)
-			for(EFPoint* p : f->points)
-				accSSE_top_A->addPoint<0>(p,this);
-		accSSE_top_A->stitchDoubleMT(red,H,b,this,false,false);
-		resInA = accSSE_top_A->nres[0];
-	}
+    accSSE_top_A->setZero(nFrames);
+    for(EFFrame* f : frames)
+        for(EFPoint* p : f->points)
+            accSSE_top_A->addPoint<0>(p,this);
+//    accSSE_top_A->stitchDoubleMT(red,H,b,this,false,false);
+    accSSE_top_A->stitchDoubleMT(red,H,b,this,true,MT);
+    resInA = accSSE_top_A->nres[0];
 }
 
 // accumulates & shifts L.
 void EnergyFunctional::accumulateLF_MT(MatXX &H, VecX &b, bool MT)
 {
-	if(MT)
-	{
-		red->reduce(boost::bind(&AccumulatedTopHessianSSE::setZero, accSSE_top_L, nFrames,  _1, _2, _3, _4), 0, 0, 0);
-		red->reduce(boost::bind(&AccumulatedTopHessianSSE::addPointsInternal<1>,
-				accSSE_top_L, &allPoints, this,  _1, _2, _3, _4), 0, allPoints.size(), 50);
-		accSSE_top_L->stitchDoubleMT(red,H,b,this,true,true);
-		resInL = accSSE_top_L->nres[0];
-	}
-	else
-	{
-		accSSE_top_L->setZero(nFrames);
-		for(EFFrame* f : frames)
-			for(EFPoint* p : f->points)
-				accSSE_top_L->addPoint<1>(p,this);
-		accSSE_top_L->stitchDoubleMT(red,H,b,this,true,false);
-		resInL = accSSE_top_L->nres[0];
-	}
+        accSSE_top_L->setZero(nFrames);
+        for(EFFrame* f : frames)
+            for(EFPoint* p : f->points)
+                // 寻找已经线性化的活跃点
+                // 累加雅克比，累加残差，新的残差是r = r - J * delta
+                accSSE_top_L->addPoint<1>(p,this);
+//        accSSE_top_L->stitchDoubleMT(red,H,b,this,true,false);
+        accSSE_top_L->stitchDoubleMT(red,H,b,this,false,MT);
+        resInL = accSSE_top_L->nres[0];
 }
-
-
-
-
 
 void EnergyFunctional::accumulateSCF_MT(MatXX &H, VecX &b, bool MT)
 {
-	if(MT) {
-		red->reduce(boost::bind(&AccumulatedSCHessianSSE::setZero, accSSE_bot, nFrames,  _1, _2, _3, _4), 0, 0, 0);
-		red->reduce(boost::bind(&AccumulatedSCHessianSSE::addPointsInternal,
-				accSSE_bot, &allPoints, true,  _1, _2, _3, _4), 0, allPoints.size(), 50);
-		accSSE_bot->stitchDoubleMT(red,H,b,this,true);
-	} else {
 		accSSE_bot->setZero(nFrames);
 		for(EFFrame* f : frames)
 			for(EFPoint* p : f->points)
 				accSSE_bot->addPoint(p, true);
 		accSSE_bot->stitchDoubleMT(red, H, b,this,false);
-	}
 }
 
 void EnergyFunctional::resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT)
@@ -267,6 +238,7 @@ void EnergyFunctional::resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT)
 //    std::cout << "....cstep...." << cstep.matrix() << std::endl;
 
 	for(EFFrame* h : frames) {
+        // 后端数据生成，推送到前端( ->data )
 		h->data->step.head<8>() = - x.segment<8>(CPARS+8*h->idx);
 		h->data->step.tail<2>().setZero();
 
@@ -274,11 +246,7 @@ void EnergyFunctional::resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT)
 			xAd[nFrames*h->idx + t->idx] = xF.segment<8>(CPARS+8*h->idx).transpose() *   adHostF[h->idx+nFrames*t->idx]
 			            + xF.segment<8>(CPARS+8*t->idx).transpose() * adTargetF[h->idx+nFrames*t->idx];
 	}
-	if(MT)
-		red->reduce(boost::bind(&EnergyFunctional::resubstituteFPt,
-						this, cstep, xAd,  _1, _2, _3, _4), 0, allPoints.size(), 50);
-	else
-		resubstituteFPt(cstep, xAd, 0, allPoints.size(), 0,0);
+    resubstituteFPt(cstep, xAd, 0, allPoints.size(), 0,0);
 
 	delete[] xAd;
 }
@@ -287,6 +255,7 @@ void EnergyFunctional::resubstituteFPt(
         const VecCf &xc, Mat18f* xAd, int min, int max, Vec10* stats, int tid)
 {
 	for(int k=min;k<max;k++) {
+        // 后端的points
 		EFPoint* p = allPoints[k];
 
 		int ngoodres = 0;
@@ -394,6 +363,9 @@ double EnergyFunctional::calcLEnergyF_MT()
 
 	red->reduce(boost::bind(&EnergyFunctional::calcLEnergyPt,
 			this, _1, _2, _3, _4), 0, allPoints.size(), 50);
+
+    std::cout << "E: " << E << std::endl;
+    std::cout << "red->stats[0]: " << red->stats[0] << std::endl;
 
 	return E+red->stats[0];
 }
@@ -626,7 +598,6 @@ void EnergyFunctional::marginalizePointsF()
 					if(r->isActive())
 						if(r->data->stereoResidualFlag == false)
 							 connectivityMap[(((uint64_t)r->host->frameID) << 32) + ((uint64_t)r->target->frameID)][1]++;
-//                         connectivityMap[(((uint64_t)r->host->frameID) << 32) + ((uint64_t)r->target->frameID)][1]++;
 				allPointsToMarg.push_back(p);
 			}
 		}
@@ -649,20 +620,9 @@ void EnergyFunctional::marginalizePointsF()
 	MatXX H =  M-Msc;
     VecX b =  Mb-Mbsc;
 
-	if(setting_solverMode & SOLVER_ORTHOGONALIZE_POINTMARG) {
-		// have a look if prior is there.
-		bool haveFirstFrame = false;
-		for(EFFrame* f : frames) if(f->frameID==0) haveFirstFrame=true;
-
-		if(!haveFirstFrame)
-			orthogonalize(&b, &H);
-	}
-
+    // 每一个点都对应一个完整的H, b。或者说，Marg: point -> (H_nxn, b_n)
 	HM += setting_margWeightFac*H;
 	bM += setting_margWeightFac*b;
-
-	if(setting_solverMode & SOLVER_ORTHOGONALIZE_FULL)
-		orthogonalize(&bM, &HM);
 
 	EFIndicesValid = false;
 	makeIDX();
@@ -758,46 +718,30 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 	assert(EFAdjointsValid);
 	assert(EFIndicesValid);
 
-	MatXX HL_top, HA_top, H_sc;
-	VecX  bL_top, bA_top, bM_top, b_sc;
+	MatXX /*HL_top,*/ HA_top, H_sc;
+	VecX  /*bL_top,*/ bA_top, bM_top, b_sc;
 
     // 边缘化后的求解，三个元素。详见涂金戈。
     // A是不受边缘化影响的残差和雅克比， L是线性化的残差和雅克比，SCF是计算舒尔补
+    // 不过其实一个已经线性化的残差都没有
 	accumulateAF_MT(HA_top, bA_top,multiThreading);
-	accumulateLF_MT(HL_top, bL_top,multiThreading);
+//    std::cout << "HA_top: " << HA_top << std::endl;
+//    std::cout << "bA_top: " << bA_top << std::endl;
+//  HL_top和bL_top基本上都是0， 只有左上角的相机内参矩阵有数值，该数值来源于先验，可以把先验加成移到AF去
+//	accumulateLF_MT(HL_top, bL_top,multiThreading);
+//    std::cout << "HL_top: " << HL_top << std::endl;
+//    std::cout << "bL_top: " << bL_top << std::endl;
 	accumulateSCF_MT(H_sc, b_sc,multiThreading);
 
+//    std::cout << "bM = bM + HM * delta. the delta: " << getStitchedDeltaF() << std::endl;
 	bM_top = (bM+ HM * getStitchedDeltaF());
 
 	MatXX HFinal_top;
 	VecX bFinal_top;
 
-	if(setting_solverMode & SOLVER_ORTHOGONALIZE_SYSTEM) {
-		// have a look if prior is there.
-		bool haveFirstFrame = false;
-		for(EFFrame* f : frames) if(f->frameID==0) haveFirstFrame=true;
-
-		MatXX HT_act =  HL_top + HA_top - H_sc;
-		VecX bT_act =   bL_top + bA_top - b_sc;
-
-		if(!haveFirstFrame)
-			orthogonalize(&bT_act, &HT_act);
-
-		HFinal_top = HT_act + HM;
-		bFinal_top = bT_act + bM_top;
-
-		lastHS = HFinal_top;
-		lastbS = bFinal_top;
-
-#ifdef MY_LAMBDA
-		for(int i=0;i<8*nFrames+CPARS;i++) HFinal_top(i,i) += lambda;
-#else
-        for(int i=0;i<8*nFrames+CPARS;i++) HFinal_top(i,i) *= (1+lambda);
-#endif
-
-	} else {
-		HFinal_top = HL_top + HM + HA_top;
-		bFinal_top = bL_top + bM_top + bA_top - b_sc;
+    {
+		HFinal_top = /*HL_top +*/ HM + HA_top;
+		bFinal_top = /*bL_top +*/ bM_top + bA_top - b_sc;
 
 		lastHS = HFinal_top - H_sc;
 		lastbS = bFinal_top;
@@ -808,17 +752,9 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 #endif
 		HFinal_top -= H_sc * (1.0f/(1+lambda));
 	}
-// 	std::ofstream f2;
-// 	std::string dsoposefile = "/home/sjm/桌面/temp/HFinal_myself.txt";
-// 	f2.open(dsoposefile,std::ios::out);
-// 	for(int i=0;i<20;i++){
-// 	    for(int j=0;j<20;j++){
-// 		f2<<std::fixed<<std::setprecision(9)<<HFinal_top(i,j)<<" ";
-// 	    }
-// 	    f2<<std::endl;
-// 	}
-// 	f2.close();
+
 	VecX x;
+//    printf("setting solverMode: %x\n", setting_solverMode);
 	if(setting_solverMode & SOLVER_SVD) {
 		VecX SVecI = HFinal_top.diagonal().cwiseSqrt().cwiseInverse();
 		MatXX HFinalScaled = SVecI.asDiagonal() * HFinal_top * SVecI.asDiagonal();
@@ -844,6 +780,7 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 		}
 		x = SVecI.asDiagonal() * svd.matrixV() * Ub;
 	} else {
+        printf("........hello\n");
 		VecX SVecI = (HFinal_top.diagonal()+VecX::Constant(HFinal_top.cols(), 10)).cwiseSqrt().cwiseInverse();
 		MatXX HFinalScaled = SVecI.asDiagonal() * HFinal_top * SVecI.asDiagonal();
 		x = SVecI.asDiagonal() * HFinalScaled.ldlt().solve(SVecI.asDiagonal() * bFinal_top);//  SVec.asDiagonal() * svd.matrixV() * Ub;
@@ -857,9 +794,8 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 	}
 
 	lastX = x;
-// 	LOG(INFO)<<"x: "<<x.transpose();
-std::cout <<"....x: " << x.transpose() << std::endl;
-// 	exit(1);
+
+//std::cout <<"....x: " << x.transpose() << std::endl;
 
 	//resubstituteF(x, HCalib);
 	currentLambda= lambda;
@@ -879,8 +815,6 @@ void EnergyFunctional::makeIDX()
 			for(EFResidual* r : p->residualsAll) {
 				r->hostIDX = r->host->idx;
 				r->targetIDX = r->target->idx;
-#ifdef DSO_LITE
-#endif
 				if(r->data->stereoResidualFlag == true) {
 				  r->targetIDX = frames[frames.size()-1]->idx;
 				}

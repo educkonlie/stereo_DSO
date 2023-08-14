@@ -86,31 +86,6 @@ public:
 	void stitchDoubleMT(IndexThreadReduce<Vec10>* red, MatXX &H, VecX &b, EnergyFunctional const * const EF, bool MT)
 	{
 		// sum up, splitting by bock in square.
-		if(MT)
-		{
-			MatXX Hs[NUM_THREADS];
-			VecX bs[NUM_THREADS];
-			for(int i=0;i<NUM_THREADS;i++)
-			{
-				assert(nframes[0] == nframes[i]);
-				Hs[i] = MatXX::Zero(nframes[0]*8+CPARS, nframes[0]*8+CPARS);
-				bs[i] = VecX::Zero(nframes[0]*8+CPARS);
-			}
-
-			red->reduce(boost::bind(&AccumulatedSCHessianSSE::stitchDoubleInternal,
-				this,Hs, bs, EF,  _1, _2, _3, _4), 0, nframes[0]*nframes[0], 0);
-
-			// sum up results
-			H = Hs[0];
-			b = bs[0];
-
-			for(int i=1;i<NUM_THREADS;i++)
-			{
-				H.noalias() += Hs[i];
-				b.noalias() += bs[i];
-			}
-		}
-		else
 		{
 			H = MatXX::Zero(nframes[0]*8+CPARS, nframes[0]*8+CPARS);
 			b = VecX::Zero(nframes[0]*8+CPARS);
@@ -118,8 +93,7 @@ public:
 		}
 
 		// make diagonal by copying over parts.
-		for(int h=0;h<nframes[0];h++)
-		{
+		for(int h=0;h<nframes[0];h++) {
 			int hIdx = CPARS+h*8;
 			H.block<CPARS,8>(0,hIdx).noalias() = H.block<8,CPARS>(hIdx,0).transpose();
 		}

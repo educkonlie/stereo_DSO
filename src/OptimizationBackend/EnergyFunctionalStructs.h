@@ -101,12 +101,14 @@ public:
 
 enum EFPointStatus {PS_GOOD=0, PS_MARGINALIZE, PS_DROP};
 
-class EFPoint
-{
+class EFPoint {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 	EFPoint(PointHessian* d, EFFrame* host_) : data(d),host(host_)
 	{
+        Hdd_accLF = 0;
+        Hcd_accLF = VecCf::Zero();
+        bd_accLF  = 0;
 		takeData();
 		stateFlag=EFPointStatus::PS_GOOD;
 	}

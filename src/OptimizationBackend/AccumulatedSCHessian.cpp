@@ -34,7 +34,9 @@ namespace dso
 void AccumulatedSCHessianSSE::addPoint(EFPoint* p, bool shiftPriorToZero, int tid)
 {
 	int ngoodres = 0;
+    // 统计该点所有的活跃残差
 	for(EFResidual* r : p->residualsAll) if(r->isActive()) ngoodres++;
+    // 如果没有活跃残差
 	if(ngoodres==0) {
 		p->HdiF=0;
 		p->bdSumF=0;
@@ -43,14 +45,21 @@ void AccumulatedSCHessianSSE::addPoint(EFPoint* p, bool shiftPriorToZero, int ti
 		return;
 	}
 
+    // 逆深度的:  H = A + L + prior; 不过L恒等于0，在DSO中其实是没有的
 	float H = p->Hdd_accAF+p->Hdd_accLF+p->priorF;
 	if(H < 1e-10) H = 1e-10;
 
+    // 逆深度的信息矩阵，因为逆深度是一维，所以是一个float，逆深度的协方差即1.0 / H
 	p->data->idepth_hessian=H;
 
+    // 原来HdiF即是协方差
 	p->HdiF = 1.0 / H;
 	p->bdSumF = p->bd_accAF + p->bd_accLF;
+
+    // deltaF恒等于0（因为DSO中并没有对逆深度进行FEJ，这个代码应该原本是更通用的框架）
+    assert(p->deltaF < 0.00001);
 	if(shiftPriorToZero) p->bdSumF += p->priorF*p->deltaF;
+
 	VecCf Hcd = p->Hcd_accAF + p->Hcd_accLF;
 	accHcc[tid].update(Hcd,Hcd,p->HdiF);
 	accbc[tid].update(Hcd, p->bdSumF * p->HdiF);

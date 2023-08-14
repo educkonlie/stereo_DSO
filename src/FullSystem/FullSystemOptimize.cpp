@@ -354,7 +354,6 @@ float FullSystem::optimize(int mnumOptIts)
 // 	LOG(INFO)<<"frameHessians.size(): "<<frameHessians.size();
 	activeResiduals.clear();
 	int numPoints = 0;
-	int numLRes = 0;
     // 帧 -> 点 -> 残差（能量项）
     // 必须是活跃帧（窗口）
 	for(FrameHessian* fh : frameHessians) {
@@ -362,23 +361,24 @@ float FullSystem::optimize(int mnumOptIts)
 		for(PointHessian* ph : fh->pointHessians) {
 			for(PointFrameResidual* r : ph->residuals) {
                 // FEJ, not push in already linearized residuals
-				if(!r->efResidual->isLinearized) {
-					activeResiduals.push_back(r);
-					r->resetOOB();
-				} else
-					numLRes++;
+                // 所有的残差都是没有线性化过的，也就是之前的线性化过的残差已经被扔了。
+                assert(!r->efResidual->isLinearized);
+
+                activeResiduals.push_back(r);
+                r->resetOOB();
 			}
 			numPoints++;
 		}
 	}
 
-    if(!setting_debugout_runquiet)
+//    if(!setting_debugout_runquiet)
         printf("OPTIMIZE %d pts, %d active res, %d lin res!\n",
-               ef->nPoints,(int)activeResiduals.size(), numLRes);
+               ef->nPoints,(int)activeResiduals.size(), 0);
 
 // 	LOG(INFO)<<"start linearize";
 	Vec3 lastEnergy = linearizeAll(false);
-	double lastEnergyL = calcLEnergy();
+//	double lastEnergyL = calcLEnergy();
+//    std::cout << "lastEnergyL: " << lastEnergyL << std::endl;
 	double lastEnergyM = calcMEnergy();
 
 	if(multiThreading)
@@ -388,7 +388,7 @@ float FullSystem::optimize(int mnumOptIts)
 
     if(!setting_debugout_runquiet) {
         printf("Initial Error       \t");
-        printOptRes(lastEnergy, lastEnergyL, lastEnergyM, 0, 0, frameHessians.back()->aff_g2l().a, frameHessians.back()->aff_g2l().b);
+        printOptRes(lastEnergy, 0/*lastEnergyL*/, lastEnergyM, 0, 0, frameHessians.back()->aff_g2l().a, frameHessians.back()->aff_g2l().b);
     }
 
 	debugPlotTracking();
@@ -418,36 +418,36 @@ float FullSystem::optimize(int mnumOptIts)
 
 		// eval new energy!
 		Vec3 newEnergy = linearizeAll(false);
-		double newEnergyL = calcLEnergy();
+//		double newEnergyL = calcLEnergy();
 		double newEnergyM = calcMEnergy();
 
         if(!setting_debugout_runquiet) {
             printf("%s %d (L %.2f, dir %.2f, ss %.1f): \t",
-				(newEnergy[0] +  newEnergy[1] +  newEnergyL + newEnergyM <
-						lastEnergy[0] + lastEnergy[1] + lastEnergyL + lastEnergyM) ? "ACCEPT" : "REJECT",
+				(newEnergy[0] +  newEnergy[1] /*+  newEnergyL*/ + newEnergyM <
+						lastEnergy[0] + lastEnergy[1] + /*lastEnergyL*/ + lastEnergyM) ? "ACCEPT" : "REJECT",
 				iteration,
 				log10(lambda),
 				incDirChange,
 				stepsize);
-            printOptRes(newEnergy, newEnergyL, newEnergyM , 0, 0, frameHessians.back()->aff_g2l().a, frameHessians.back()->aff_g2l().b);
+            printOptRes(newEnergy, 0/*newEnergyL*/, newEnergyM , 0, 0, frameHessians.back()->aff_g2l().a, frameHessians.back()->aff_g2l().b);
         }
 
-		if(setting_forceAceptStep || (newEnergy[0] +  newEnergy[1] +  newEnergyL + newEnergyM <
-				lastEnergy[0] + lastEnergy[1] + lastEnergyL + lastEnergyM)) {
+		if(setting_forceAceptStep || (newEnergy[0] +  newEnergy[1] +  0/*newEnergyL*/ + newEnergyM <
+				lastEnergy[0] + lastEnergy[1] + /*lastEnergyL*/0 + lastEnergyM)) {
 			if(multiThreading)
 				treadReduce.reduce(boost::bind(&FullSystem::applyRes_Reductor, this, true, _1, _2, _3, _4), 0, activeResiduals.size(), 50);
 			else
 				applyRes_Reductor(true,0,activeResiduals.size(),0,0);
 
 			lastEnergy = newEnergy;
-			lastEnergyL = newEnergyL;
+//			lastEnergyL = newEnergyL;
 			lastEnergyM = newEnergyM;
 
 			lambda *= 0.25;
 		} else {
 			loadSateBackup();
 			lastEnergy = linearizeAll(false);
-			lastEnergyL = calcLEnergy();
+//			lastEnergyL = calcLEnergy();
 			lastEnergyM = calcMEnergy();
 			lambda *= 1e2;
 		}
@@ -515,7 +515,6 @@ double FullSystem::calcLEnergy()
 
 	double Ef = ef->calcLEnergyF_MT();
 	return Ef;
-
 }
 
 void FullSystem::removeOutliers()

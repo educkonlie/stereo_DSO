@@ -839,11 +839,13 @@ void FullSystem::flagPointsForRemoval()
 			PointHessian* ph = host->pointHessians[i];
 			if(ph==0) continue;
 
+            // 如果逆深度小于0，或者已经没有观测（残差为0）, 则需要丢弃该点
 			if(ph->idepth_scaled < 0 || ph->residuals.size()==0) {
 				host->pointHessiansOut.push_back(ph);
 				ph->efPoint->stateFlag = EFPointStatus::PS_DROP;
 				host->pointHessians[i]=0;
 				flag_nores++;
+               //
 			} else if(ph->isOOB(fhsToKeepPoints, fhsToMargPoints)
                     || host->flaggedForMarginalization) {
 				flag_oob++;
@@ -861,6 +863,7 @@ void FullSystem::flagPointsForRemoval()
 						r->efResidual->isLinearized = false;
 						r->applyRes(true);
 						if(r->efResidual->isActive()) {
+                            // 从此这个r只能用H * delta模拟更新了
 							r->efResidual->fixLinearizationF(ef);
 							ngoodRes++;
 						}
@@ -1313,6 +1316,7 @@ void FullSystem::makeKeyFrame( FrameHessian* fh)
 
 // 	LOG(INFO)<<"flagPointsForRemoval";
 	// =========================== (Activate-)Marginalize Points =========================
+    // 将一些残差固定线性化
 	flagPointsForRemoval();
 // 	LOG(INFO)<<"ef->dropPointsF()";
 	ef->dropPointsF();

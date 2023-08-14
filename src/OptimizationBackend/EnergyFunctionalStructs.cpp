@@ -74,6 +74,7 @@ void EFPoint::takeData()
 	if(setting_solverMode & SOLVER_REMOVE_POSEPRIOR) priorF=0;
 
 	deltaF = data->idepth-data->idepth_zero;
+    assert(deltaF < 0.00001);
 }
 
 

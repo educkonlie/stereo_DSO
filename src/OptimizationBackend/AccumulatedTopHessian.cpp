@@ -35,10 +35,11 @@ namespace dso
 {
 
 
+    //   Top的addPoint和Bot的addPoint
 template<int mode>
 void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * const ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
 {
-	assert(mode==0 || mode==1 || mode==2);
+	assert(mode==0 /*|| mode==1*/ || mode==2);
 
 	VecCf dc = ef->cDeltaF;
 	float dd = p->deltaF;
@@ -49,12 +50,12 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 
 	for(EFResidual* r : p->residualsAll) {
 		if(mode==0) {
+            assert(!r->isLinearized);
 			if(r->isLinearized || !r->isActive()) continue;
 		}
-		if(mode==1) {
-			if(!r->isLinearized || !r->isActive()) continue;
-		}
 		if(mode==2) {
+            // 这里还是有已经固定线性化的残差的
+//            assert(!r->isLinearized);
 			if(!r->isActive()) continue;
 			assert(r->isLinearized);
 		}
@@ -68,24 +69,6 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 			resApprox = rJ->resF;
 		if(mode==2)
 			resApprox = r->res_toZeroF;
-		if(mode==1) {
-			// compute Jp*delta
-            // 更新L部分的残差，因为已经丢失观测，所以只能用res = res - J * delta来更新
-			__m128 Jp_delta_x = _mm_set1_ps(rJ->Jpdxi[0].dot(dp.head<6>())+rJ->Jpdc[0].dot(dc)+rJ->Jpdd[0]*dd);
-			__m128 Jp_delta_y = _mm_set1_ps(rJ->Jpdxi[1].dot(dp.head<6>())+rJ->Jpdc[1].dot(dc)+rJ->Jpdd[1]*dd);
-			__m128 delta_a = _mm_set1_ps((float)(dp[6]));
-			__m128 delta_b = _mm_set1_ps((float)(dp[7]));
-
-			for(int i=0;i<patternNum;i+=4) {
-				// PATTERN: rtz = resF - [JI*Jp Ja]*delta.
-				__m128 rtz = _mm_load_ps(((float*)&r->res_toZeroF)+i);
-				rtz = _mm_add_ps(rtz,_mm_mul_ps(_mm_load_ps(((float*)(rJ->JIdx))+i),Jp_delta_x));
-				rtz = _mm_add_ps(rtz,_mm_mul_ps(_mm_load_ps(((float*)(rJ->JIdx+1))+i),Jp_delta_y));
-				rtz = _mm_add_ps(rtz,_mm_mul_ps(_mm_load_ps(((float*)(rJ->JabF))+i),delta_a));
-				rtz = _mm_add_ps(rtz,_mm_mul_ps(_mm_load_ps(((float*)(rJ->JabF+1))+i),delta_b));
-				_mm_store_ps(((float*)&resApprox)+i, rtz);
-			}
-		}
 
 		// need to compute JI^T * r, and Jab^T * r. (both are 2-vectors).
 		Vec2f JI_r(0,0);
@@ -128,7 +111,9 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 		p->bd_accAF = bd_acc;
 		p->Hcd_accAF = Hcd_acc;
 	}
-	if(mode==1 || mode==2) {
+
+    // point的L只会在这一次有非零值
+	if(mode==2) {
 		p->Hdd_accLF = Hdd_acc;
 		p->bd_accLF = bd_acc;
 		p->Hcd_accLF = Hcd_acc;
