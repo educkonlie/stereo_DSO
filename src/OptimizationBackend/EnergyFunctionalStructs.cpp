@@ -53,16 +53,6 @@ void EFFrame::takeData()
 	delta = data->get_state_minus_stateZero().head<8>();
 	delta_prior =  (data->get_state() - data->getPriorZero()).head<8>();
 
-//	Vec10 state_zero =  data->get_state_zero();
-//	state_zero.segment<3>(0) = SCALE_XI_TRANS * state_zero.segment<3>(0);
-//	state_zero.segment<3>(3) = SCALE_XI_ROT * state_zero.segment<3>(3);
-//	state_zero[6] = SCALE_A * state_zero[6];
-//	state_zero[7] = SCALE_B * state_zero[7];
-//	state_zero[8] = SCALE_A * state_zero[8];
-//	state_zero[9] = SCALE_B * state_zero[9];
-//
-//	std::cout << "state_zero: " << state_zero.transpose() << "\n";
-
 	assert(data->frameID != -1);
 
 	frameID = data->frameID;
@@ -72,9 +62,6 @@ void EFPoint::takeData()
 {
 	priorF = data->hasDepthPrior ? setting_idepthFixPrior*SCALE_IDEPTH*SCALE_IDEPTH : 0;
 	if(setting_solverMode & SOLVER_REMOVE_POSEPRIOR) priorF=0;
-
-	deltaF = data->idepth-data->idepth_zero;
-    assert(deltaF < 0.00001);
 }
 
 
@@ -84,16 +71,13 @@ void EFResidual::fixLinearizationF(EnergyFunctional* ef)
 
 	// compute Jp*delta
 	__m128 Jp_delta_x = _mm_set1_ps(J->Jpdxi[0].dot(dp.head<6>())
-								   +J->Jpdc[0].dot(ef->cDeltaF)
-								   +J->Jpdd[0]*point->deltaF);
+								   +J->Jpdc[0].dot(ef->cDeltaF));
 	__m128 Jp_delta_y = _mm_set1_ps(J->Jpdxi[1].dot(dp.head<6>())
-								   +J->Jpdc[1].dot(ef->cDeltaF)
-								   +J->Jpdd[1]*point->deltaF);
+								   +J->Jpdc[1].dot(ef->cDeltaF));
 	__m128 delta_a = _mm_set1_ps((float)(dp[6]));
 	__m128 delta_b = _mm_set1_ps((float)(dp[7]));
 
-	for(int i=0;i<patternNum;i+=4)
-	{
+	for(int i=0;i<patternNum;i+=4) {
 		// PATTERN: rtz = resF - [JI*Jp Ja]*delta.
 		__m128 rtz = _mm_load_ps(((float*)&J->resF)+i);
         // rkf

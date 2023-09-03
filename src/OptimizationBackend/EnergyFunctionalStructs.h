@@ -117,7 +117,7 @@ public:
 	PointHessian* data;
 
 	float priorF;
-	float deltaF;
+//	float deltaF;
 
 	// constant info (never changes in-between).
 	int idxInPoints;

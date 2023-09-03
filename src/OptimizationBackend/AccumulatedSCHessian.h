@@ -80,7 +80,7 @@ public:
 		nframes[tid]=n;
 	}
 	void stitchDouble(MatXX &H_sc, VecX &b_sc, EnergyFunctional const * const EF, int tid=0);
-	void addPoint(EFPoint* p, bool shiftPriorToZero, int tid=0);
+	void addPoint(EFPoint* p, int tid=0);
 
 
 	void stitchDoubleMT(IndexThreadReduce<Vec10>* red, MatXX &H, VecX &b, EnergyFunctional const * const EF, bool MT)

@@ -31,7 +31,7 @@
 namespace dso
 {
 
-void AccumulatedSCHessianSSE::addPoint(EFPoint* p, bool shiftPriorToZero, int tid)
+void AccumulatedSCHessianSSE::addPoint(EFPoint* p, int tid)
 {
 	int ngoodres = 0;
     // 统计该点所有的活跃残差
@@ -56,10 +56,6 @@ void AccumulatedSCHessianSSE::addPoint(EFPoint* p, bool shiftPriorToZero, int ti
     // 原来HdiF即是协方差
 	p->HdiF = 1.0 / H;
 	p->bdSumF = p->bd_accAF + p->bd_accLF;
-
-    // deltaF恒等于0（因为DSO中并没有对逆深度进行FEJ，这个代码应该原本是更通用的框架）
-//    assert(p->deltaF < 0.00001);
-//	if(shiftPriorToZero) p->bdSumF += p->priorF*p->deltaF;
 
 	VecCf Hcd = p->Hcd_accAF + p->Hcd_accLF;
 	accHcc[tid].update(Hcd,Hcd,p->HdiF);

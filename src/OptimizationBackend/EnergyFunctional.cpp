@@ -180,11 +180,11 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
 		f->delta = f->data->get_state_minus_stateZero().head<8>();
 		f->delta_prior = (f->data->get_state() - f->data->getPriorZero()).head<8>();
 
-		for(EFPoint* p : f->points) {
+		/*for(EFPoint* p : f->points) {
             p->deltaF = p->data->idepth - p->data->idepth_zero;
             // 逆深度其实并没有用FEJ，所以delta === 0.0
             assert(p -> deltaF < 0.00001);
-        }
+        }*/
 	}
 
 	EFDeltaValid = true;
@@ -207,7 +207,7 @@ void EnergyFunctional::accumulateSCF_MT(MatXX &H, VecX &b, bool MT)
 		accSSE_bot->setZero(nFrames);
 		for(EFFrame* f : frames)
 			for(EFPoint* p : f->points)
-				accSSE_bot->addPoint(p, true);
+				accSSE_bot->addPoint(p);
 		accSSE_bot->stitchDoubleMT(red, H, b,this,false);
 }
 

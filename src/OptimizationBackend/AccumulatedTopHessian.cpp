@@ -42,7 +42,7 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 	assert(mode==0 /*|| mode==1*/ || mode==2);
 
 	VecCf dc = ef->cDeltaF;
-	float dd = p->deltaF;
+//	float dd = p->deltaF;
 
 	float bd_acc=0;
 	float Hdd_acc=0;
