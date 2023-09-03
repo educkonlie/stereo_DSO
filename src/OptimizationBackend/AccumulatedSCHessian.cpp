@@ -46,6 +46,7 @@ void AccumulatedSCHessianSSE::addPoint(EFPoint* p, bool shiftPriorToZero, int ti
 	}
 
     // 逆深度的:  H = A + L + prior; 不过L恒等于0，在DSO中其实是没有的
+    // Hdd_accLF有一次是非零的
 	float H = p->Hdd_accAF+p->Hdd_accLF+p->priorF;
 	if(H < 1e-10) H = 1e-10;
 
@@ -57,8 +58,8 @@ void AccumulatedSCHessianSSE::addPoint(EFPoint* p, bool shiftPriorToZero, int ti
 	p->bdSumF = p->bd_accAF + p->bd_accLF;
 
     // deltaF恒等于0（因为DSO中并没有对逆深度进行FEJ，这个代码应该原本是更通用的框架）
-    assert(p->deltaF < 0.00001);
-	if(shiftPriorToZero) p->bdSumF += p->priorF*p->deltaF;
+//    assert(p->deltaF < 0.00001);
+//	if(shiftPriorToZero) p->bdSumF += p->priorF*p->deltaF;
 
 	VecCf Hcd = p->Hcd_accAF + p->Hcd_accLF;
 	accHcc[tid].update(Hcd,Hcd,p->HdiF);

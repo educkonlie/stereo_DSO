@@ -124,10 +124,8 @@ private:
     void resubstituteFPt(const VecCf &xc, Mat18f* xAd, int min, int max, Vec10* stats, int tid);
 
 	void accumulateAF_MT(MatXX &H, VecX &b, bool MT);
-	void accumulateLF_MT(MatXX &H, VecX &b, bool MT);
 	void accumulateSCF_MT(MatXX &H, VecX &b, bool MT);
 
-	void calcLEnergyPt(int min, int max, Vec10* stats, int tid);
 
 	void orthogonalize(VecX* b, MatXX* H);
 	Mat18f* adHTdeltaF;
@@ -137,7 +135,6 @@ private:
 
 	Mat88f* adHostF;
 	Mat88f* adTargetF;
-
 
 	VecC cPrior;
 	VecCf cDeltaF;
@@ -151,7 +148,6 @@ private:
 	std::vector<EFPoint*> allPoints;
 	std::vector<EFPoint*> allPointsToMarg;
 
-	float currentLambda;
 };
 }
 

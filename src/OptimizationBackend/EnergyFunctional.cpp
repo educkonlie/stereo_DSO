@@ -130,7 +130,7 @@ EnergyFunctional::EnergyFunctional()
 	accSSE_bot = new AccumulatedSCHessianSSE();
 
 	resInA = resInL = resInM = 0;
-	currentLambda=0;
+//	currentLambda=0;
 }
 EnergyFunctional::~EnergyFunctional()
 {
@@ -200,20 +200,6 @@ void EnergyFunctional::accumulateAF_MT(MatXX &H, VecX &b, bool MT)
 //    accSSE_top_A->stitchDoubleMT(red,H,b,this,false,false);
     accSSE_top_A->stitchDoubleMT(red,H,b,this,true,MT);
     resInA = accSSE_top_A->nres[0];
-}
-
-// accumulates & shifts L.
-void EnergyFunctional::accumulateLF_MT(MatXX &H, VecX &b, bool MT)
-{
-        accSSE_top_L->setZero(nFrames);
-        for(EFFrame* f : frames)
-            for(EFPoint* p : f->points)
-                // 寻找已经线性化的活跃点
-                // 累加雅克比，累加残差，新的残差是r = r - J * delta
-                accSSE_top_L->addPoint<1>(p,this);
-//        accSSE_top_L->stitchDoubleMT(red,H,b,this,true,false);
-        accSSE_top_L->stitchDoubleMT(red,H,b,this,false,MT);
-        resInL = accSSE_top_L->nres[0];
 }
 
 void EnergyFunctional::accumulateSCF_MT(MatXX &H, VecX &b, bool MT)
@@ -293,62 +279,6 @@ double EnergyFunctional::calcMEnergyF()
 	VecX delta = getStitchedDeltaF();
 	return delta.dot(2*bM + HM*delta);
 }
-
-
-void EnergyFunctional::calcLEnergyPt(int min, int max, Vec10* stats, int tid)
-{
-	Accumulator11 E;
-	E.initialize();
-	VecCf dc = cDeltaF;
-
-	for(int i=min;i<max;i++) {
-		EFPoint* p = allPoints[i];
-		float dd = p->deltaF;
-
-		for(EFResidual* r : p->residualsAll) {
-			if(!r->isLinearized || !r->isActive()) continue;
-
-			Mat18f dp = adHTdeltaF[r->hostIDX+nFrames*r->targetIDX];
-			RawResidualJacobian* rJ = r->J;
-			// compute Jp*delta
-			float Jp_delta_x_1 =  rJ->Jpdxi[0].dot(dp.head<6>())
-						   +rJ->Jpdc[0].dot(dc)
-						   +rJ->Jpdd[0]*dd;
-
-			float Jp_delta_y_1 =  rJ->Jpdxi[1].dot(dp.head<6>())
-						   +rJ->Jpdc[1].dot(dc)
-						   +rJ->Jpdd[1]*dd;
-
-			__m128 Jp_delta_x = _mm_set1_ps(Jp_delta_x_1);
-			__m128 Jp_delta_y = _mm_set1_ps(Jp_delta_y_1);
-			__m128 delta_a = _mm_set1_ps((float)(dp[6]));
-			__m128 delta_b = _mm_set1_ps((float)(dp[7]));
-
-			for(int i=0;i+3<patternNum;i+=4) {
-				// PATTERN: E = (2*res_toZeroF + J*delta) * J*delta.
-				__m128 Jdelta =            _mm_mul_ps(_mm_load_ps(((float*)(rJ->JIdx))+i),Jp_delta_x);
-				Jdelta = _mm_add_ps(Jdelta,_mm_mul_ps(_mm_load_ps(((float*)(rJ->JIdx+1))+i),Jp_delta_y));
-				Jdelta = _mm_add_ps(Jdelta,_mm_mul_ps(_mm_load_ps(((float*)(rJ->JabF))+i),delta_a));
-				Jdelta = _mm_add_ps(Jdelta,_mm_mul_ps(_mm_load_ps(((float*)(rJ->JabF+1))+i),delta_b));
-
-				__m128 r0 = _mm_load_ps(((float*)&r->res_toZeroF)+i);
-				r0 = _mm_add_ps(r0,r0);
-				r0 = _mm_add_ps(r0,Jdelta);
-				Jdelta = _mm_mul_ps(Jdelta,r0);
-				E.updateSSENoShift(Jdelta);
-			}
-			for(int i=((patternNum>>2)<<2); i < patternNum; i++) {
-				float Jdelta = rJ->JIdx[0][i]*Jp_delta_x_1 + rJ->JIdx[1][i]*Jp_delta_y_1 +
-								rJ->JabF[0][i]*dp[6] + rJ->JabF[1][i]*dp[7];
-				E.updateSingleNoShift((float)(Jdelta * (Jdelta + 2*r->res_toZeroF[i])));
-			}
-		}
-		E.updateSingle(p->deltaF*p->deltaF*p->priorF);
-	}
-	E.finish();
-	(*stats)[0] += E.A;
-}
-
 
 EFResidual* EnergyFunctional::insertResidual(PointFrameResidual* r)
 {
@@ -776,9 +706,9 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //std::cout <<"....x: " << x.transpose() << std::endl;
 
 	//resubstituteF(x, HCalib);
-	currentLambda= lambda;
+//	currentLambda= lambda;
 	resubstituteF_MT(x, HCalib,multiThreading);
-	currentLambda=0;
+//	currentLambda=0;
 }
 void EnergyFunctional::makeIDX()
 {
