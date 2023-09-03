@@ -99,21 +99,12 @@ public:
 		}
 	}
 
-
 	AccumulatorXX<8,CPARS>* accE[NUM_THREADS];
 	AccumulatorX<8>* accEB[NUM_THREADS];
 	AccumulatorXX<8,8>* accD[NUM_THREADS];
 	AccumulatorXX<CPARS,CPARS> accHcc[NUM_THREADS];
 	AccumulatorX<CPARS> accbc[NUM_THREADS];
 	int nframes[NUM_THREADS];
-
-
-	void addPointsInternal(
-			std::vector<EFPoint*>* points, bool shiftPriorToZero,
-			int min=0, int max=1, Vec10* stats=0, int tid=0)
-	{
-		for(int i=min;i<max;i++) addPoint((*points)[i],shiftPriorToZero,tid);
-	}
 
 private:
 

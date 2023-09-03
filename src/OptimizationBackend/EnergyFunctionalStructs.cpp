@@ -96,12 +96,15 @@ void EFResidual::fixLinearizationF(EnergyFunctional* ef)
 	{
 		// PATTERN: rtz = resF - [JI*Jp Ja]*delta.
 		__m128 rtz = _mm_load_ps(((float*)&J->resF)+i);
+        // rkf
 		rtz = _mm_sub_ps(rtz,_mm_mul_ps(_mm_load_ps(((float*)(J->JIdx))+i),Jp_delta_x));
 		rtz = _mm_sub_ps(rtz,_mm_mul_ps(_mm_load_ps(((float*)(J->JIdx+1))+i),Jp_delta_y));
 		rtz = _mm_sub_ps(rtz,_mm_mul_ps(_mm_load_ps(((float*)(J->JabF))+i),delta_a));
 		rtz = _mm_sub_ps(rtz,_mm_mul_ps(_mm_load_ps(((float*)(J->JabF+1))+i),delta_b));
 		_mm_store_ps(((float*)&res_toZeroF)+i, rtz);
 	}
+//    std::cout << "resF: " << J->resF.transpose() * J->resF << std::endl;
+//    std::cout << "res_toZeroF: " << res_toZeroF.transpose() * res_toZeroF << std::endl;
 
 	isLinearized = true;
 }

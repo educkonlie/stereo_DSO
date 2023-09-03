@@ -57,9 +57,8 @@ void FullSystem::linearizeAll_Reductor(bool fixLinearization, std::vector<PointF
 		}
 // 		(*stats)[0] += r->linearize(&Hcalib);
 		if(fixLinearization) {
-			r->applyRes(true);
+			r->applyRes();
 			if(r->efResidual->isActive()) {
-// 				if(r->isNew)
 				if(r->isNew&&r->stereoResidualFlag == false) {
 					PointHessian* p = r->point;
 					Vec3f ptp_inf = r->host->targetPrecalc[r->target->idx].PRE_KRKiTll * Vec3f(p->u,p->v, 1);	// projected point assuming infinite depth.
@@ -70,20 +69,6 @@ void FullSystem::linearizeAll_Reductor(bool fixLinearization, std::vector<PointF
 						p->maxRelBaseline = relBS;
 					p->numGoodResiduals++;
 				}
-/*#ifdef DSO_LITE
-                if(r->isNew&&r->stereoResidualFlag == true) {
-                    Vec3f trans_baseline = Vec3f::Zero();
-                    trans_baseline << -baseline, 0, 0;
-					PointHessian* p = r->point;
-					Vec3f ptp_inf = r->host->targetPrecalc[r->target->idx].PRE_KRKiTll * Vec3f(p->u,p->v, 1);	// projected point assuming infinite depth.
-					Vec3f ptp = ptp_inf + (r->host->targetPrecalc[r->target->idx].PRE_KtTll + trans_baseline)*p->idepth_scaled;	// projected point with real depth.
-					float relBS = 0.01*((ptp_inf.head<2>() / ptp_inf[2])-(ptp.head<2>() / ptp[2])).norm();	// 0.01 = one pixel.
-
-					if(relBS > p->maxRelBaseline)
-						p->maxRelBaseline = relBS;
-					p->numGoodResiduals++;
-				}
-#endif*/
 			} else {
 				toRemove[tid].push_back(activeResiduals[k]);
 			}
@@ -94,7 +79,7 @@ void FullSystem::linearizeAll_Reductor(bool fixLinearization, std::vector<PointF
 void FullSystem::applyRes_Reductor(bool copyJacobians, int min, int max, Vec10* stats, int tid)
 {
 	for(int k=min;k<max;k++)
-		activeResiduals[k]->applyRes(true);
+		activeResiduals[k]->applyRes();
 }
 void FullSystem::setNewFrameEnergyTH()
 {
@@ -509,13 +494,6 @@ void FullSystem::solveSystem(int iteration, double lambda)
 	ef->solveSystemF(iteration, lambda,&Hcalib);
 }
 
-double FullSystem::calcLEnergy()
-{
-	if(setting_forceAceptStep) return 0;
-
-	double Ef = ef->calcLEnergyF_MT();
-	return Ef;
-}
 
 void FullSystem::removeOutliers()
 {

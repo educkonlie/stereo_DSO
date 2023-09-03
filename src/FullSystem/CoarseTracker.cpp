@@ -629,8 +629,12 @@ bool CoarseTracker::track(
         // 层内的迭代
 		for(int iteration=0; iteration < maxIterations[lvl]; iteration++) {
 			Mat88 Hl = H;
+            // lambda的正确用法应当如下MY_LAMBDA。原代码有误，所以去掉了lambda的使用。
+            // 原代码的做法的LM算法似乎也是有的，虽然无法让半正定变正定，但是可以增加一个damp，
+            // 这样的好处是会减弱每次的step，让系统更鲁棒。
+            // 贺博说VIO中就会这样做。
 #ifdef MY_LAMBDA
-            for(int i=0;i<8;i++) Hl(i,i) += lambda; // 鲁棒
+            for(int i=0;i<8;i++) Hl(i,i) += lambda /** 0.001*/; // 鲁棒
 #else
             for(int i=0;i<8;i++) Hl(i,i) *= (1+lambda); // 鲁棒
 #endif

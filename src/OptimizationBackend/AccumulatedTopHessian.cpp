@@ -236,9 +236,17 @@ void AccumulatedTopHessianSSE::stitchDoubleInternal(
 	if(min==0 && usePrior) {
 		H[tid].diagonal().head<CPARS>() += EF->cPrior;
 		b[tid].head<CPARS>() += EF->cPrior.cwiseProduct(EF->cDeltaF.cast<double>());
+
+//        std::cout << "cPrior: " << EF->cPrior;
+
 		for(int h=0;h<nframes[tid];h++) {
 			H[tid].diagonal().segment<8>(CPARS+h*8) += EF->frames[h]->prior;
 			b[tid].segment<8>(CPARS+h*8) += EF->frames[h]->prior.cwiseProduct(EF->frames[h]->delta_prior);
+
+            // prior都是0， 導致所有的H，b都不會有改變
+//            std::cout << "prior: " << EF->frames[h]->prior << std::endl;
+//            std::cout << "delta_prior: " << EF->frames[h]->delta_prior << std::endl;
+//            std::cout << "delta: " << EF->frames[h]->delta << std::endl;
 		}
 	}
 }

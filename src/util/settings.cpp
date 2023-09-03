@@ -58,7 +58,7 @@ float setting_initialCalibHessian = 5e9;
 
 /* some modes for solving the resulting linear system (e.g. orthogonalize wrt. unobservable dimensions) */
 //int setting_solverMode = SOLVER_FIX_LAMBDA | SOLVER_ORTHOGONALIZE_X_LATER;
-int setting_solverMode = SOLVER_SVD | SOLVER_USE_GN | SOLVER_ORTHOGONALIZE_X_LATER;
+int setting_solverMode = SOLVER_SVD | SOLVER_FIX_LAMBDA /*| SOLVER_USE_GN*/ | SOLVER_ORTHOGONALIZE_X_LATER;
 //int setting_solverMode = 4095 - SOLVER_REMOVE_POSEPRIOR;
 double setting_solverModeDelta = 0.00001;
 bool setting_forceAceptStep = true;

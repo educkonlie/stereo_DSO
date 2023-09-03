@@ -821,8 +821,8 @@ void FullSystem::flagPointsForRemoval()
 	std::vector<FrameHessian*> fhsToKeepPoints;
 	std::vector<FrameHessian*> fhsToMargPoints;
 
-	//if(setting_margPointVisWindow>0)
-	{
+//	if(setting_margPointVisWindow>0)
+    {
 		for(int i=((int)frameHessians.size())-1;i>=0 && i >= ((int)frameHessians.size());i--)
 			if(!frameHessians[i]->flaggedForMarginalization) fhsToKeepPoints.push_back(frameHessians[i]);
 
@@ -861,9 +861,12 @@ void FullSystem::flagPointsForRemoval()
 							r->linearize(&Hcalib);
 // 						r->linearize(&Hcalib);
 						r->efResidual->isLinearized = false;
-						r->applyRes(true);
+                        // 计算残差值
+						r->applyRes();
 						if(r->efResidual->isActive()) {
                             // 从此这个r只能用H * delta模拟更新了
+                            // 但是在DSO中，也就这一次模拟，之后它会被丢弃
+                            // 如果不被丢弃，就会体现在计算L的过程中，后续会继续模拟更新
 							r->efResidual->fixLinearizationF(ef);
 							ngoodRes++;
 						}
