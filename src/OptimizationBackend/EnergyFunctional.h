@@ -63,9 +63,7 @@ public:
 	friend class EFFrame;
 	friend class EFPoint;
 	friend class EFResidual;
-	friend class AccumulatedTopHessian;
 	friend class AccumulatedTopHessianSSE;
-	friend class AccumulatedSCHessian;
 	friend class AccumulatedSCHessianSSE;
 
 	EnergyFunctional();
@@ -84,7 +82,6 @@ public:
 	void dropPointsF();
 	void solveSystemF(int iteration, double lambda, CalibHessian* HCalib);
 	double calcMEnergyF();
-	double calcLEnergyF_MT();
 
 	void makeIDX();
 
@@ -140,7 +137,7 @@ private:
 	VecCf cDeltaF;
 	VecCf cPriorF;
 
-	AccumulatedTopHessianSSE* accSSE_top_L;
+//	AccumulatedTopHessianSSE* accSSE_top_L;
 	AccumulatedTopHessianSSE* accSSE_top_A;
 
 	AccumulatedSCHessianSSE* accSSE_bot;

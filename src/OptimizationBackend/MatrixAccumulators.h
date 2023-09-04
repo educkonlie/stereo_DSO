@@ -397,6 +397,7 @@ private:
   }
 };
 
+//!  用于前端tracker
 class Accumulator9 {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;

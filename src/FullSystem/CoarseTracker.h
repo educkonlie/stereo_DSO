@@ -54,10 +54,6 @@ public:
 			int coarsestLvl, Vec5 minResForAbort,
 			IOWrap::Output3DWrapper* wrap=0);
 
-    void makeCoarseDepthForFirstFrame();
-	void setCTRefForFirstFrame(
-			std::vector<FrameHessian*> frameHessians);
-
 	void setCoarseTrackingRef(
 			std::vector<FrameHessian*> frameHessians, CalibHessian Hcalib, bool first);
 
@@ -96,11 +92,8 @@ private:
 	float* weightSums[PYR_LEVELS];
 	float* weightSums_bak[PYR_LEVELS];
 
-//	Vec6 calcResAndGS(int lvl, Mat88 &H_out, Vec8 &b_out, const SE3 &refToNew, AffLight aff_g2l, float cutoffTH);
-	Vec6 calcRes(int lvl, const SE3 &refToNew, AffLight aff_g2l, float cutoffTH);
     Vec6 calcRes_MT(int lvl, const SE3 &refToNew, AffLight aff_g2l, float cutoffTH);
 	void calcGSSSE(int lvl, Mat88 &H_out, Vec8 &b_out, const SE3 &refToNew, AffLight aff_g2l);
-//	void calcGS(int lvl, Mat88 &H_out, Vec8 &b_out, const SE3 &refToNew, AffLight aff_g2l);
 
 	// pc buffers
     // point camera

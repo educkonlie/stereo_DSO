@@ -124,8 +124,7 @@ EnergyFunctional::EnergyFunctional()
 	HM = MatXX::Zero(CPARS,CPARS);
 	bM = VecX::Zero(CPARS);
 
-
-	accSSE_top_L = new AccumulatedTopHessianSSE();
+//	accSSE_top_L = new AccumulatedTopHessianSSE();
 	accSSE_top_A = new AccumulatedTopHessianSSE();
 	accSSE_bot = new AccumulatedSCHessianSSE();
 
@@ -157,8 +156,6 @@ EnergyFunctional::~EnergyFunctional()
 	if(adHTdeltaF != 0) delete[] adHTdeltaF;
 
 
-
-	delete accSSE_top_L;
 	delete accSSE_top_A;
 	delete accSSE_bot;
 }

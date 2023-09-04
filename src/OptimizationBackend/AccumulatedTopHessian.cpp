@@ -39,10 +39,9 @@ namespace dso
 template<int mode>
 void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * const ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
 {
-	assert(mode==0 /*|| mode==1*/ || mode==2);
+	assert(mode==0 || mode==2);
 
 	VecCf dc = ef->cDeltaF;
-//	float dd = p->deltaF;
 
 	float bd_acc=0;
 	float Hdd_acc=0;

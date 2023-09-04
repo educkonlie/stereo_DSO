@@ -362,7 +362,7 @@ void CoarseTracker::calcGSSSE(int lvl, Mat88 &H_out, Vec8 &b_out, const SE3 &ref
 }
 
 // 计算残差
-Vec6 CoarseTracker::calcRes(int lvl, const SE3 &refToNew, AffLight aff_g2l, float cutoffTH)
+/*Vec6 CoarseTracker::calcRes(int lvl, const SE3 &refToNew, AffLight aff_g2l, float cutoffTH)
 {
 	float E = 0;
 	int numTermsInE = 0;
@@ -518,7 +518,7 @@ Vec6 CoarseTracker::calcRes(int lvl, const SE3 &refToNew, AffLight aff_g2l, floa
 	rs[5] = numSaturated / (float)numTermsInE;
 
 	return rs;
-}
+}*/
 
 // 这里会设置新的参考帧，时机是创建新关键帧的时候，会制作for_newkey跟踪器
 // 当来新帧的时候，比较for_newkey跟踪器和现有跟踪器，如果for_newkey跟踪器的帧更新，就使用for_newkey跟踪器
