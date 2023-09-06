@@ -46,11 +46,12 @@ void AccumulatedSCHessianSSE::addPoint(EFPoint* p, int tid)
 		return;
 	}
 
-    // 逆深度的:  H = A + L + prior; 不过L恒等于0，在DSO中其实是没有的
-    // Hdd_accLF有一次是非零的
-    assert(p->Hdd_accAF < 0.000001 || p->Hdd_accLF < 0.000001);
-//	float H = p->Hdd_accAF+p->Hdd_accLF+p->priorF;
-    float H = p->Hdd_accAF/*+p->Hdd_accLF*/+p->priorF;
+    // 逆深度的:  H = A + prior
+    //! 仅在initializeFromInitializer的时候才会有priorF，大约是2500或9000，所以初始逆深度的方差不会大于
+    //! 这个数的倒数。后面的priorF都是0了。
+//    if (p->priorF > 0.000001)
+//        printf("p->priorF: [%f], p->Hdd_accAF: [%f]\n", p->priorF, p->Hdd_accAF);
+    float H = p->Hdd_accAF + p->priorF;
 	if(H < 1e-10) H = 1e-10;
 
     // 逆深度的信息矩阵，因为逆深度是一维，所以是一个float，逆深度的协方差即1.0 / H
@@ -58,9 +59,11 @@ void AccumulatedSCHessianSSE::addPoint(EFPoint* p, int tid)
 
     // 原来HdiF即是协方差
 	p->HdiF = 1.0 / H;
-	p->bdSumF = p->bd_accAF /*+ p->bd_accLF*/;
+	p->bdSumF = p->bd_accAF;
 
-	VecCf Hcd = p->Hcd_accAF /*+ p->Hcd_accLF*/;
+	VecCf Hcd = p->Hcd_accAF;
+    //! L * w * R.t() => i X j => A
+    //! acc<i><j> A += L * w * R.t()
 	accHcc[tid].update(Hcd,Hcd,p->HdiF);
 	accbc[tid].update(Hcd, p->bdSumF * p->HdiF);
 
@@ -197,13 +200,17 @@ void AccumulatedSCHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional c
 
 	accHcc[tid].finish();
 	accbc[tid].finish();
+    //! H左上角<CPARS, CPARS>块和对应的b最上面<CPARS>行
 	H.topLeftCorner<CPARS,CPARS>() = accHcc[tid].A1m.cast<double>();
 	b.head<CPARS>() = accbc[tid].A1m.cast<double>();
 
 	// ----- new: copy transposed parts for calibration only.
 	for(int h=0;h<nf;h++) {
 		int hIdx = CPARS+h*8;
-		H.block<CPARS,8>(0,hIdx).noalias() = H.block<8,CPARS>(hIdx,0).transpose();
+        //! 右上角的横长条 = 左下角的竖长条的转置
+        //! 逐格填充，每格<CPARS, 8>或<8, CPARS>
+		H.block<CPARS,8>(0,hIdx).noalias() =
+                H.block<8,CPARS>(hIdx,0).transpose();
 	}
 }
 

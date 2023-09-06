@@ -108,24 +108,6 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
     p->Hdd_accAF = Hdd_acc;
     p->bd_accAF = bd_acc;
     p->Hcd_accAF = Hcd_acc;
-
-/*	if(mode==0) {
-		p->Hdd_accAF = Hdd_acc;
-		p->bd_accAF = bd_acc;
-		p->Hcd_accAF = Hcd_acc;
-	}
-
-    // point的L只会在这一次有非零值
-	if(mode==2) {
-		p->Hdd_accLF = Hdd_acc;
-		p->bd_accLF = bd_acc;
-		p->Hcd_accLF = Hcd_acc;
-	}
-	if(mode==2) {
-		p->Hcd_accAF.setZero();
-		p->Hdd_accAF = 0;
-		p->bd_accAF = 0;
-	}*/
 }
 template void AccumulatedTopHessianSSE::addPoint<0>(EFPoint* p, EnergyFunctional const * const ef, int tid);
 template void AccumulatedTopHessianSSE::addPoint<1>(EFPoint* p, EnergyFunctional const * const ef, int tid);
@@ -138,6 +120,7 @@ void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional 
 
 	for(int h=0;h<nframes[tid];h++)
 		for(int t=0;t<nframes[tid];t++) {
+            //! h:[0, nframes - 1], t:[0, nframes - 1]
 			int hIdx = CPARS+h*8;
 			int tIdx = CPARS+t*8;
 			int aidx = h+nframes[tid]*t;

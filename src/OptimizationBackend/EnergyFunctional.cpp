@@ -195,17 +195,19 @@ void EnergyFunctional::accumulateAF_MT(MatXX &H, VecX &b, bool MT)
         for(EFPoint* p : f->points)
             accSSE_top_A->addPoint<0>(p,this);
 //    accSSE_top_A->stitchDoubleMT(red,H,b,this,false,false);
-    accSSE_top_A->stitchDoubleMT(red,H,b,this,true,MT);
-    resInA = accSSE_top_A->nres[0];
+//    accSSE_top_A->stitchDoubleMT(red,H,b,this,true,MT);
+        accSSE_top_A->stitchDouble(H,b,this,true, true);
+        resInA = accSSE_top_A->nres[0];
 }
 
 void EnergyFunctional::accumulateSCF_MT(MatXX &H, VecX &b, bool MT)
 {
-		accSSE_bot->setZero(nFrames);
-		for(EFFrame* f : frames)
-			for(EFPoint* p : f->points)
-				accSSE_bot->addPoint(p);
-		accSSE_bot->stitchDoubleMT(red, H, b,this,false);
+    accSSE_bot->setZero(nFrames);
+    for(EFFrame* f : frames)
+        for(EFPoint* p : f->points)
+            accSSE_bot->addPoint(p);
+//		accSSE_bot->stitchDoubleMT(red, H, b,this,false);
+    accSSE_bot->stitchDouble(H, b,this);
 }
 
 void EnergyFunctional::resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT)
@@ -250,7 +252,7 @@ void EnergyFunctional::resubstituteFPt(
 		float b = p->bdSumF;
 //        std::cout << " 1 b: " << b << std::endl;
 //        std::cout << " xc: " << xc.matrix() << std::endl;
-		b -= xc.dot(p->Hcd_accAF + p->Hcd_accLF);
+		b -= xc.dot(p->Hcd_accAF /*+ p->Hcd_accLF*/);
 //        std::cout << " 2 b: " << b << std::endl;
 
 		for(EFResidual* r : p->residualsAll) {

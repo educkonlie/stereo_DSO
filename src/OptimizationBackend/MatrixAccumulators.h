@@ -69,15 +69,13 @@ private:
 
   void shiftUp(bool force)
   {
-	  if(numIn1 > 1000 || force)
-	  {
+	  if(numIn1 > 1000 || force) {
 		  A1k += A;
 		  A.setZero();
 		  numIn1k+=numIn1;
 		  numIn1=0;
 	  }
-	  if(numIn1k > 1000 || force)
-	  {
+	  if(numIn1k > 1000 || force) {
 		  A1m += A1k;
 		  A1k.setZero();
 		  numIn1m+=numIn1k;

@@ -106,9 +106,9 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 	EFPoint(PointHessian* d, EFFrame* host_) : data(d),host(host_)
 	{
-        Hdd_accLF = 0;
-        Hcd_accLF = VecCf::Zero();
-        bd_accLF  = 0;
+        Hdd_accAF = 0.0;
+        Hcd_accAF = VecCf::Zero();
+        bd_accAF  = 0.0;
 		takeData();
 		stateFlag=EFPointStatus::PS_GOOD;
 	}
@@ -128,9 +128,6 @@ public:
 
 	float bdSumF;
 	float HdiF=1e-3;
-	float Hdd_accLF;
-	VecCf Hcd_accLF;
-	float bd_accLF;
 	float Hdd_accAF;
 	VecCf Hcd_accAF;
 	float bd_accAF;
