@@ -31,6 +31,7 @@
 namespace dso
 {
 
+    //! 将p化为整个增量H
 void AccumulatedSCHessianSSE::addPoint(EFPoint* p, int tid)
 {
 	int ngoodres = 0;
@@ -47,7 +48,9 @@ void AccumulatedSCHessianSSE::addPoint(EFPoint* p, int tid)
 
     // 逆深度的:  H = A + L + prior; 不过L恒等于0，在DSO中其实是没有的
     // Hdd_accLF有一次是非零的
-	float H = p->Hdd_accAF+p->Hdd_accLF+p->priorF;
+    assert(p->Hdd_accAF < 0.000001 || p->Hdd_accLF < 0.000001);
+//	float H = p->Hdd_accAF+p->Hdd_accLF+p->priorF;
+    float H = p->Hdd_accAF/*+p->Hdd_accLF*/+p->priorF;
 	if(H < 1e-10) H = 1e-10;
 
     // 逆深度的信息矩阵，因为逆深度是一维，所以是一个float，逆深度的协方差即1.0 / H
@@ -55,9 +58,9 @@ void AccumulatedSCHessianSSE::addPoint(EFPoint* p, int tid)
 
     // 原来HdiF即是协方差
 	p->HdiF = 1.0 / H;
-	p->bdSumF = p->bd_accAF + p->bd_accLF;
+	p->bdSumF = p->bd_accAF /*+ p->bd_accLF*/;
 
-	VecCf Hcd = p->Hcd_accAF + p->Hcd_accLF;
+	VecCf Hcd = p->Hcd_accAF /*+ p->Hcd_accLF*/;
 	accHcc[tid].update(Hcd,Hcd,p->HdiF);
 	accbc[tid].update(Hcd, p->bdSumF * p->HdiF);
 

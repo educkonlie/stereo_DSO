@@ -105,7 +105,11 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 		nres[tid]++;
 	}
 
-	if(mode==0) {
+    p->Hdd_accAF = Hdd_acc;
+    p->bd_accAF = bd_acc;
+    p->Hcd_accAF = Hcd_acc;
+
+/*	if(mode==0) {
 		p->Hdd_accAF = Hdd_acc;
 		p->bd_accAF = bd_acc;
 		p->Hcd_accAF = Hcd_acc;
@@ -121,7 +125,7 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 		p->Hcd_accAF.setZero();
 		p->Hdd_accAF = 0;
 		p->bd_accAF = 0;
-	}
+	}*/
 }
 template void AccumulatedTopHessianSSE::addPoint<0>(EFPoint* p, EnergyFunctional const * const ef, int tid);
 template void AccumulatedTopHessianSSE::addPoint<1>(EFPoint* p, EnergyFunctional const * const ef, int tid);

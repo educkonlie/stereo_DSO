@@ -356,7 +356,7 @@ private:
   EIGEN_ALIGN16 float TopRight_Data[32];
   EIGEN_ALIGN16 float TopRight_Data1k[32];
   EIGEN_ALIGN16 float TopRight_Data1m[32];
-
+//! 估计是只存一个点
   EIGEN_ALIGN16 float BotRight_Data[8];
   EIGEN_ALIGN16 float BotRight_Data1k[8];
   EIGEN_ALIGN16 float BotRight_Data1m[8];
@@ -410,6 +410,7 @@ public:
   {
 	H.setZero();
 	b.setZero();
+    //! 三级缓冲，累加
     memset(SSEData,0, sizeof(float)*4*45);
     memset(SSEData1k,0, sizeof(float)*4*45);
     memset(SSEData1m,0, sizeof(float)*4*45);
