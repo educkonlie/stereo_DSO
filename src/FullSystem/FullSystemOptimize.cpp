@@ -187,7 +187,7 @@ bool FullSystem::doStepFromBackup(float stepfacC,float stepfacT,float stepfacR,f
 
 	float sumNID=0;
 
-	if(setting_solverMode & SOLVER_MOMENTUM) {
+	/*if(setting_solverMode & SOLVER_MOMENTUM) {
 		Hcalib.setValue(Hcalib.value_backup + Hcalib.step);
 		for(FrameHessian* fh : frameHessians) {
 			Vec10 step = fh->step;
@@ -209,12 +209,13 @@ bool FullSystem::doStepFromBackup(float stepfacC,float stepfacT,float stepfacR,f
                 ph->setIdepthZero(ph->idepth_backup + step);
 			}
 		}
-	} else {
+	} else*/
+    {
 		Hcalib.setValue(Hcalib.value_backup + stepfacC*Hcalib.step);
 		for(FrameHessian* fh : frameHessians) {
 			fh->setState(fh->state_backup + pstepfac.cwiseProduct(fh->step));
-			sumA += fh->step[6]*fh->step[6];
-			sumB += fh->step[7]*fh->step[7];
+			sumA += fh->step[6] * fh->step[6];
+			sumB += fh->step[7] * fh->step[7];
 			sumT += fh->step.segment<3>(0).squaredNorm();
 			sumR += fh->step.segment<3>(3).squaredNorm();
 
@@ -408,17 +409,18 @@ float FullSystem::optimize(int mnumOptIts)
 
         if(!setting_debugout_runquiet) {
             printf("%s %d (L %.2f, dir %.2f, ss %.1f): \t",
-				(newEnergy[0] +  newEnergy[1] /*+  newEnergyL*/ + newEnergyM <
-						lastEnergy[0] + lastEnergy[1] + /*lastEnergyL*/ + lastEnergyM) ? "ACCEPT" : "REJECT",
+				(newEnergy[0] +  newEnergy[1] + newEnergyM <
+						lastEnergy[0] + lastEnergy[1] + lastEnergyM) ? "ACCEPT" : "REJECT",
 				iteration,
 				log10(lambda),
 				incDirChange,
 				stepsize);
-            printOptRes(newEnergy, 0/*newEnergyL*/, newEnergyM , 0, 0, frameHessians.back()->aff_g2l().a, frameHessians.back()->aff_g2l().b);
+            printOptRes(newEnergy, 0, newEnergyM , 0, 0,
+                        frameHessians.back()->aff_g2l().a, frameHessians.back()->aff_g2l().b);
         }
 
-		if(setting_forceAceptStep || (newEnergy[0] +  newEnergy[1] +  0/*newEnergyL*/ + newEnergyM <
-				lastEnergy[0] + lastEnergy[1] + /*lastEnergyL*/0 + lastEnergyM)) {
+		if(setting_forceAceptStep || (newEnergy[0] +  newEnergy[1] + newEnergyM <
+				lastEnergy[0] + lastEnergy[1] + lastEnergyM)) {
 			if(multiThreading)
 				treadReduce.reduce(boost::bind(&FullSystem::applyRes_Reductor, this, true, _1, _2, _3, _4), 0, activeResiduals.size(), 50);
 			else

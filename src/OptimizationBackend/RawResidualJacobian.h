@@ -34,10 +34,12 @@ struct RawResidualJacobian {
 	// ================== new structure: save independently =============.
 	EIGEN_ALIGN16 VecNRf resF;
 
+    //! 重投影误差对于xi的偏导
     // xi -> [x, y]^t
 	// the two rows of d[x,y]/d[xi].
 	EIGEN_ALIGN16 Vec6f Jpdxi[2];			// 2x6
 
+    //! 重投影误差对于c的偏导
 	// the two rows of d[x,y]/d[C].
 	EIGEN_ALIGN16 VecCf Jpdc[2];			// 2x4
 

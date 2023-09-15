@@ -93,14 +93,12 @@ void EnergyFunctional::setAdjointsF(CalibHessian* Hcalib)
 	adTargetF = new Mat88f[nFrames*nFrames];
 
 	for(int h=0;h<nFrames;h++)
-		for(int t=0;t<nFrames;t++)
-		{
+		for(int t=0;t<nFrames;t++) {
 			adHostF[h+t*nFrames] = adHost[h+t*nFrames].cast<float>();
 			adTargetF[h+t*nFrames] = adTarget[h+t*nFrames].cast<float>();
 		}
 
-	cPriorF = cPrior.cast<float>();
-
+//	cPriorF = cPrior.cast<float>();
 
 	EFAdjointsValid = true;
 }
@@ -113,7 +111,7 @@ EnergyFunctional::EnergyFunctional()
 	adTarget=0;
 
 
-	red=0;
+//	red=0;
 
 	adHostF=0;
 	adTargetF=0;
@@ -168,14 +166,17 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
 	for(int h=0;h<nFrames;h++)
 		for(int t=0;t<nFrames;t++) {
 			int idx = h+t*nFrames;
-			adHTdeltaF[idx] = frames[h]->data->get_state_minus_stateZero().head<8>().cast<float>().transpose() * adHostF[idx]
-					        +frames[t]->data->get_state_minus_stateZero().head<8>().cast<float>().transpose() * adTargetF[idx];
+			adHTdeltaF[idx] =
+                    frames[h]->data->get_state_minus_stateZero().head<8>().cast<float>().transpose() *
+                            adHostF[idx] +
+                            frames[t]->data->get_state_minus_stateZero().head<8>().cast<float>().transpose() *
+                                    adTargetF[idx];
 		}
 
 	cDeltaF = HCalib->value_minus_value_zero.cast<float>();
 	for(EFFrame* f : frames) {
 		f->delta = f->data->get_state_minus_stateZero().head<8>();
-		f->delta_prior = (f->data->get_state() - f->data->getPriorZero()).head<8>();
+		f->delta_prior = f->data->get_state().head<8>();
 
 		/*for(EFPoint* p : f->points) {
             p->deltaF = p->data->idepth - p->data->idepth_zero;
@@ -194,22 +195,18 @@ void EnergyFunctional::accumulateAF_MT(MatXX &H, VecX &b, bool MT)
     for(EFFrame* f : frames)
         for(EFPoint* p : f->points)
             accSSE_top_A->addPoint<0>(p,this);
-//    accSSE_top_A->stitchDoubleMT(red,H,b,this,false,false);
-//    accSSE_top_A->stitchDoubleMT(red,H,b,this,true,MT);
         accSSE_top_A->stitchDouble(H,b,this,true, true);
         resInA = accSSE_top_A->nres[0];
 }
-
 void EnergyFunctional::accumulateSCF_MT(MatXX &H, VecX &b, bool MT)
 {
     accSSE_bot->setZero(nFrames);
     for(EFFrame* f : frames)
         for(EFPoint* p : f->points)
             accSSE_bot->addPoint(p);
-//		accSSE_bot->stitchDoubleMT(red, H, b,this,false);
     accSSE_bot->stitchDouble(H, b,this);
 }
-
+//! resubstitute是输出，把后端的解输出到前端
 void EnergyFunctional::resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT)
 {
 	assert(x.size() == CPARS+nFrames*8);
@@ -303,9 +300,6 @@ EFFrame* EnergyFunctional::insertFrame(FrameHessian* fh, CalibHessian* Hcalib)
 	fh->efFrame = eff;
 	//stereo
     // 这里增加右图
-#ifdef DSO_LITE
-// 记录一下 eff_right的定义处
-#endif
 	EFFrame* eff_right = new EFFrame(fh->frame_right);
 	eff_right->idx = frames.size()+1000000;
 	fh->frame_right->efFrame = eff_right;
@@ -428,8 +422,10 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 	hpi = 0.5f*(hpi+hpi);
 
 	// schur-complement!
+    //! 把右下角舒尔补掉了
 	MatXX bli = HMScaled.bottomLeftCorner(8,ndim).transpose() * hpi;
-	HMScaled.topLeftCorner(ndim,ndim).noalias() -= bli * HMScaled.bottomLeftCorner(8,ndim);
+	HMScaled.topLeftCorner(ndim,ndim).noalias() -=
+            bli * HMScaled.bottomLeftCorner(8,ndim);
 	bMScaled.head(ndim).noalias() -= bli*bMScaled.tail<8>();
 
 	//unscale!
@@ -437,8 +433,13 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 	bMScaled = SVec.asDiagonal() * bMScaled;
 
 	// set.
-	HM = 0.5*(HMScaled.topLeftCorner(ndim,ndim) + HMScaled.topLeftCorner(ndim,ndim).transpose());
+    //! 把右下角丢弃
+	HM = 0.5*(HMScaled.topLeftCorner(ndim,ndim) +
+            HMScaled.topLeftCorner(ndim,ndim).transpose());
 	bM = bMScaled.head(ndim);
+
+    std::cout << "bM: " << bM.size() << std::endl;
+    std::cout << "bMScaled: " << bMScaled.size() << std::endl;
 
 	// remove from vector, without changing the order!
 	for(unsigned int i=fh->idx; i+1<frames.size();i++) {
@@ -503,6 +504,7 @@ void EnergyFunctional::marginalizePointsF()
 	}
 	MatXX M, Msc;
 	VecX Mb, Mbsc;
+    //! HM，bM是祖传的。这里M - Msc, Mb - Mbsc是本次新的增量，再加到祖传的HM，bM上。
 	accSSE_top_A->stitchDouble(M,Mb,this,false,false);
 
     // bot指的是從bot生成（舒爾補）對應的top
@@ -516,6 +518,8 @@ void EnergyFunctional::marginalizePointsF()
     // 每一个点都对应一个完整的H, b。或者说，Marg: point -> (H_nxn, b_n)
 	HM += setting_margWeightFac*H;
 	bM += setting_margWeightFac*b;
+
+    std::cout << "bM size in marg points: " << bM.size() << std::endl;
 
 	EFIndicesValid = false;
 	makeIDX();
@@ -640,6 +644,10 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 		HFinal_top = /*HL_top +*/ HM + HA_top;
 		bFinal_top = /*bL_top +*/ bM_top + bA_top - b_sc;
 
+        std::cout << "bM size: " << bM.size() << std::endl;
+        std::cout << "bA_top size: " << bA_top.size() << std::endl;
+        std::cout << "bM_top size: " << bM_top.size() << std::endl;
+
         // lastHS和lastbS只有打印時會調用，無實際作用
 		lastHS = HFinal_top - H_sc;
 		lastbS = bFinal_top;
@@ -733,9 +741,11 @@ void EnergyFunctional::makeIDX()
 
 VecX EnergyFunctional::getStitchedDeltaF() const
 {
-	VecX d = VecX(CPARS+nFrames*8).setZero(); d.head<CPARS>() = cDeltaF.cast<double>();
+	VecX d = VecX(CPARS+nFrames*8).setZero();
+    d.head<CPARS>() = cDeltaF.cast<double>();
     // rkf
-	for(int h=0;h<nFrames;h++) d.segment<8>(CPARS+8*h) = frames[h]->delta;
+	for(int h=0;h<nFrames;h++)
+        d.segment<8>(CPARS+8*h) = frames[h]->delta;
 	return d;
 }
 

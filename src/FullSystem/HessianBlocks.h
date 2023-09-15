@@ -218,6 +218,7 @@ struct FrameHessian {
 		Vec10 initial_state = Vec10::Zero();
 		initial_state[6] = aff_g2l.a;
 		initial_state[7] = aff_g2l.b;
+        //! 我知道原因了，因为\Xi其实只能保持pose，所以aff要分开处理
 		this->worldToCam_evalPT = worldToCam_evalPT;
 		setStateScaled(initial_state);
 		setStateZero(this->get_state());

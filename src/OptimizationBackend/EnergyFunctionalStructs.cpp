@@ -49,9 +49,12 @@ void EFResidual::takeDataF()
 
 void EFFrame::takeData()
 {
+    //! 这个prior是真先验，直接就是DSO写死的常数(经验数据)
 	prior = data->getPrior().head<8>();
+    //! 这个delta才是取之前计算得到的值
 	delta = data->get_state_minus_stateZero().head<8>();
-	delta_prior =  (data->get_state() - data->getPriorZero()).head<8>();
+    //! getPriorZero()为0
+	delta_prior = data->get_state().head<8>();
 
 	assert(data->frameID != -1);
 

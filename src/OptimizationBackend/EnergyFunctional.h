@@ -105,8 +105,6 @@ public:
 	std::vector<VecX> lastNullspaces_affA;
 	std::vector<VecX> lastNullspaces_affB;
 
-	IndexThreadReduce<Vec10>* red;
-
 	std::map<uint64_t,
 	  Eigen::Vector2i,
 	  std::less<uint64_t>,
@@ -135,7 +133,7 @@ private:
 
 	VecC cPrior;
 	VecCf cDeltaF;
-	VecCf cPriorF;
+//	VecCf cPriorF;
 
 //	AccumulatedTopHessianSSE* accSSE_top_L;
 	AccumulatedTopHessianSSE* accSSE_top_A;

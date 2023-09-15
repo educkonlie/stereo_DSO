@@ -151,7 +151,7 @@ FullSystem::FullSystem()
 	initialized=false;
 
 	ef = new EnergyFunctional();
-	ef->red = &this->treadReduce;
+//	ef->red = &this->treadReduce;
 
 	isLost=false;
 	initFailed=false;

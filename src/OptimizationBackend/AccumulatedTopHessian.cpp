@@ -34,7 +34,6 @@
 namespace dso
 {
 
-
     //   Top的addPoint和Bot的addPoint
 template<int mode>
 void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * const ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
@@ -172,70 +171,6 @@ void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional 
 	}
 }
 
-
-void AccumulatedTopHessianSSE::stitchDoubleInternal(
-		MatXX* H, VecX* b, EnergyFunctional const * const EF, bool usePrior,
-		int min, int max, Vec10* stats, int tid)
-{
-	int toAggregate = NUM_THREADS;
-	if(tid == -1) { toAggregate = 1; tid = 0; }	// special case: if we dont do multithreading, dont aggregate.
-	if(min==max) return;
-
-	for(int k=min;k<max;k++) {
-		int h = k%nframes[0];
-		int t = k/nframes[0];
-
-		int hIdx = CPARS+h*8;
-		int tIdx = CPARS+t*8;
-		int aidx = h+nframes[0]*t;
-
-		assert(aidx == k);
-
-		MatPCPC accH = MatPCPC::Zero();
-
-		for(int tid2=0;tid2 < toAggregate;tid2++) {
-			acc[tid2][aidx].finish();
-			if(acc[tid2][aidx].num==0) continue;
-			accH += acc[tid2][aidx].H.cast<double>();
-		}
-
-		H[tid].block<8,8>(hIdx, hIdx).noalias() += EF->adHost[aidx] * accH.block<8,8>(CPARS,CPARS) * EF->adHost[aidx].transpose();
-
-		H[tid].block<8,8>(tIdx, tIdx).noalias() += EF->adTarget[aidx] * accH.block<8,8>(CPARS,CPARS) * EF->adTarget[aidx].transpose();
-
-		H[tid].block<8,8>(hIdx, tIdx).noalias() += EF->adHost[aidx] * accH.block<8,8>(CPARS,CPARS) * EF->adTarget[aidx].transpose();
-
-		H[tid].block<8,CPARS>(hIdx,0).noalias() += EF->adHost[aidx] * accH.block<8,CPARS>(CPARS,0);
-
-		H[tid].block<8,CPARS>(tIdx,0).noalias() += EF->adTarget[aidx] * accH.block<8,CPARS>(CPARS,0);
-
-		H[tid].topLeftCorner<CPARS,CPARS>().noalias() += accH.block<CPARS,CPARS>(0,0);
-
-		b[tid].segment<8>(hIdx).noalias() += EF->adHost[aidx] * accH.block<8,1>(CPARS,CPARS+8);
-
-		b[tid].segment<8>(tIdx).noalias() += EF->adTarget[aidx] * accH.block<8,1>(CPARS,CPARS+8);
-
-		b[tid].head<CPARS>().noalias() += accH.block<CPARS,1>(0,CPARS+8);
-	}
-
-	// only do this on one thread.
-	if(min==0 && usePrior) {
-		H[tid].diagonal().head<CPARS>() += EF->cPrior;
-		b[tid].head<CPARS>() += EF->cPrior.cwiseProduct(EF->cDeltaF.cast<double>());
-
-//        std::cout << "cPrior: " << EF->cPrior;
-
-		for(int h=0;h<nframes[tid];h++) {
-			H[tid].diagonal().segment<8>(CPARS+h*8) += EF->frames[h]->prior;
-			b[tid].segment<8>(CPARS+h*8) += EF->frames[h]->prior.cwiseProduct(EF->frames[h]->delta_prior);
-
-            // prior都是0， 導致所有的H，b都不會有改變
-//            std::cout << "prior: " << EF->frames[h]->prior << std::endl;
-//            std::cout << "delta_prior: " << EF->frames[h]->delta_prior << std::endl;
-//            std::cout << "delta: " << EF->frames[h]->delta << std::endl;
-		}
-	}
-}
 
 }
 
