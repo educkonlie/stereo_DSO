@@ -52,8 +52,7 @@ void EnergyFunctional::setAdjointsF(CalibHessian* Hcalib)
 	adTarget = new Mat88[nFrames*nFrames];
 
 	for(int h=0;h<nFrames;h++)
-		for(int t=0;t<nFrames;t++)
-		{
+		for(int t=0;t<nFrames;t++) {
 			FrameHessian* host = frames[h]->data;
 			FrameHessian* target = frames[t]->data;
 
@@ -228,6 +227,7 @@ void EnergyFunctional::resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT)
 			xAd[nFrames*h->idx + t->idx] = xF.segment<8>(CPARS+8*h->idx).transpose() *   adHostF[h->idx+nFrames*t->idx]
 			            + xF.segment<8>(CPARS+8*t->idx).transpose() * adTargetF[h->idx+nFrames*t->idx];
 	}
+    //! 通过逆深度对于光度内参的偏导，乘以光度参数的delta，可以得到优化更新的逆深度
     resubstituteFPt(cstep, xAd, 0, allPoints.size(), 0,0);
 
 	delete[] xAd;

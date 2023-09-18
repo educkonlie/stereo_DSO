@@ -60,12 +60,15 @@ public:
 
 	inline void setZero(int n, int min=0, int max=1, Vec10* stats=0, int tid=0) {
 		if(n != nframes[tid]) {
+            std::cout << "n: " << n << " nframes: " << nframes[tid] << std::endl;
 			if(accE[tid] != 0) delete[] accE[tid];
 			if(accEB[tid] != 0) delete[] accEB[tid];
 			if(accD[tid] != 0) delete[] accD[tid];
 			accE[tid] = new AccumulatorXX<8,CPARS>[n*n];
 			accEB[tid] = new AccumulatorX<8>[n*n];
+            //! 这里为什么是n cube
 			accD[tid] = new AccumulatorXX<8,8>[n*n*n];
+//			accD[tid] = new AccumulatorXX<8,8>[n*n];
 		}
 		accbc[tid].initialize();
 		accHcc[tid].initialize();
@@ -74,30 +77,15 @@ public:
 			accE[tid][i].initialize();
 			accEB[tid][i].initialize();
 
+            //! 一个accE对应了n个accD
 			for(int j=0;j<n;j++)
+                //! accD[n*n][n]
 				accD[tid][i*n+j].initialize();
 		}
 		nframes[tid]=n;
 	}
 	void stitchDouble(MatXX &H_sc, VecX &b_sc, EnergyFunctional const * const EF, int tid=0);
 	void addPoint(EFPoint* p, int tid=0);
-
-
-	void stitchDoubleMT(IndexThreadReduce<Vec10>* red, MatXX &H, VecX &b, EnergyFunctional const * const EF, bool MT)
-	{
-		// sum up, splitting by bock in square.
-		{
-			H = MatXX::Zero(nframes[0]*8+CPARS, nframes[0]*8+CPARS);
-			b = VecX::Zero(nframes[0]*8+CPARS);
-			stitchDoubleInternal(&H, &b, EF,0,nframes[0]*nframes[0],0,-1);
-		}
-
-		// make diagonal by copying over parts.
-		for(int h=0;h<nframes[0];h++) {
-			int hIdx = CPARS+h*8;
-			H.block<CPARS,8>(0,hIdx).noalias() = H.block<8,CPARS>(hIdx,0).transpose();
-		}
-	}
 
 	AccumulatorXX<8,CPARS>* accE[NUM_THREADS];
 	AccumulatorX<8>* accEB[NUM_THREADS];
@@ -108,9 +96,6 @@ public:
 
 private:
 
-	void stitchDoubleInternal(
-			MatXX* H, VecX* b, EnergyFunctional const * const EF,
-			int min, int max, Vec10* stats, int tid);
 };
 
 }

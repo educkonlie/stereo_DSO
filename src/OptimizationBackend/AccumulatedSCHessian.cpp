@@ -31,7 +31,7 @@
 namespace dso
 {
 
-    //! 将p化为整个增量H
+    //! 将p化为Hsc
 void AccumulatedSCHessianSSE::addPoint(EFPoint* p, int tid)
 {
 	int ngoodres = 0;
@@ -64,6 +64,7 @@ void AccumulatedSCHessianSSE::addPoint(EFPoint* p, int tid)
 	VecCf Hcd = p->Hcd_accAF;
     //! L * w * R.t() => i X j => A
     //! acc<i><j> A += L * w * R.t()
+    //! w = H_inv
 	accHcc[tid].update(Hcd,Hcd,p->HdiF);
 	accbc[tid].update(Hcd, p->bdSumF * p->HdiF);
 
@@ -77,80 +78,16 @@ void AccumulatedSCHessianSSE::addPoint(EFPoint* p, int tid)
 		for(EFResidual* r2 : p->residualsAll) {
 			if(!r2->isActive()) continue;
 
+            //! accD[target2][target1][host]
 			accD[tid][r1ht+r2->targetIDX*nFrames2].update(r1->JpJdF, r2->JpJdF, p->HdiF);
 		}
 
+        //! accE[t][h], accEB[t][h]
 		accE[tid][r1ht].update(r1->JpJdF, Hcd, p->HdiF);
 		accEB[tid][r1ht].update(r1->JpJdF,p->HdiF*p->bdSumF);
 	}
 }
-void AccumulatedSCHessianSSE::stitchDoubleInternal(
-		MatXX* H, VecX* b, EnergyFunctional const * const EF,
-		int min, int max, Vec10* stats, int tid)
-{
-	int toAggregate = NUM_THREADS;
-	if(tid == -1) { toAggregate = 1; tid = 0; }	// special case: if we dont do multithreading, dont aggregate.
-	if(min==max) return;
 
-	int nf = nframes[0];
-	int nframes2 = nf*nf;
-
-	for(int k=min;k<max;k++) {
-		int i = k%nf; int j = k/nf;
-
-		int iIdx = CPARS+i*8; int jIdx = CPARS+j*8; int ijIdx = i+nf*j;
-
-		Mat8C Hpc = Mat8C::Zero();
-		Vec8 bp = Vec8::Zero();
-
-		for(int tid2=0;tid2 < toAggregate;tid2++) {
-			accE[tid2][ijIdx].finish();
-			accEB[tid2][ijIdx].finish();
-			Hpc += accE[tid2][ijIdx].A1m.cast<double>();
-			bp += accEB[tid2][ijIdx].A1m.cast<double>();
-		}
-
-		H[tid].block<8,CPARS>(iIdx,0) += EF->adHost[ijIdx] * Hpc;
-		H[tid].block<8,CPARS>(jIdx,0) += EF->adTarget[ijIdx] * Hpc;
-		b[tid].segment<8>(iIdx) += EF->adHost[ijIdx] * bp;
-		b[tid].segment<8>(jIdx) += EF->adTarget[ijIdx] * bp;
-
-		for(int k=0;k<nf;k++) {
-			int kIdx = CPARS+k*8;
-			int ijkIdx = ijIdx + k*nframes2;
-			int ikIdx = i+nf*k;
-
-			Mat88 accDM = Mat88::Zero();
-
-			for(int tid2=0;tid2 < toAggregate;tid2++) {
-				accD[tid2][ijkIdx].finish();
-				if(accD[tid2][ijkIdx].num == 0) continue;
-				accDM += accD[tid2][ijkIdx].A1m.cast<double>();
-			}
-
-			H[tid].block<8,8>(iIdx, iIdx) += EF->adHost[ijIdx] * accDM * EF->adHost[ikIdx].transpose();
-			H[tid].block<8,8>(jIdx, kIdx) += EF->adTarget[ijIdx] * accDM * EF->adTarget[ikIdx].transpose();
-			H[tid].block<8,8>(jIdx, iIdx) += EF->adTarget[ijIdx] * accDM * EF->adHost[ikIdx].transpose();
-			H[tid].block<8,8>(iIdx, kIdx) += EF->adHost[ijIdx] * accDM * EF->adTarget[ikIdx].transpose();
-		}
-	}
-
-	if(min==0) {
-		for(int tid2=0;tid2 < toAggregate;tid2++) {
-			accHcc[tid2].finish();
-			accbc[tid2].finish();
-			H[tid].topLeftCorner<CPARS,CPARS>() += accHcc[tid2].A1m.cast<double>();
-			b[tid].head<CPARS>() += accbc[tid2].A1m.cast<double>();
-		}
-	}
-
-//	// ----- new: copy transposed parts for calibration only.
-//	for(int h=0;h<nf;h++)
-//	{
-//		int hIdx = 4+h*8;
-//		H.block<4,8>(0,hIdx).noalias() = H.block<8,4>(hIdx,0).transpose();
-//	}
-}
 
 void AccumulatedSCHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional const * const EF, int tid)
 {
@@ -187,6 +124,7 @@ void AccumulatedSCHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional c
 				if(accD[tid][ijkIdx].num == 0) continue;
 				Mat88 accDM = accD[tid][ijkIdx].A1m.cast<double>();
 
+                //! 对于相对位姿(t, h)的偏导转为对于绝对位姿t, h的偏导，并且因为是在制作H，会有四块
 				H.block<8,8>(iIdx, iIdx) +=
                         EF->adHost[ijIdx] * accDM * EF->adHost[ikIdx].transpose();
 				H.block<8,8>(jIdx, kIdx) +=

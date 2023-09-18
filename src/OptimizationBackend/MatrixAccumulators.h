@@ -37,6 +37,8 @@ class AccumulatorXX {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
+  //! 设计成A, A1k, A1m三级纯粹是为了并行。好像也不一定，也许是为了数值稳定性，保持频繁的加法出现在数值较小的情况下，
+  //! 不懂数值稳定性这块，只是猜测。
   Eigen::Matrix<float,i,j> A;
   Eigen::Matrix<float,i,j> A1k;
   Eigen::Matrix<float,i,j> A1m;
@@ -57,6 +59,7 @@ public:
   }
 
   // L * w * R^T
+  //! shape为<i, j>
   inline void update(const Eigen::Matrix<float,i,1> &L, const Eigen::Matrix<float,j,1> &R, float w)
   {
 	  A += w*L*R.transpose();
@@ -67,6 +70,7 @@ public:
 private:
   float numIn1, numIn1k, numIn1m;
 
+  //! 最后一次使用force，强制汇总所有的数据到A1m
   void shiftUp(bool force)
   {
 	  if(numIn1 > 1000 || force) {
@@ -112,6 +116,8 @@ public:
   {
 	  A += w*L;
 	  numIn1++;
+      //! 去掉shiftUp试试
+      //! 确实去掉了也无所谓
 	  shiftUp(false);
   }
 

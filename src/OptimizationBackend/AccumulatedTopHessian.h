@@ -38,10 +38,7 @@ namespace dso
 class EFPoint;
 class EnergyFunctional;
 
-
-
-class AccumulatedTopHessianSSE
-{
+class AccumulatedTopHessianSSE {
 public:
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 	inline AccumulatedTopHessianSSE()
@@ -73,7 +70,8 @@ public:
 		nres[tid]=0;
 
 	}
-	void stitchDouble(MatXX &H, VecX &b, EnergyFunctional const * const EF, bool usePrior, bool useDelta, int tid=0);
+	void stitchDouble(MatXX &H, VecX &b, EnergyFunctional const * const EF,
+                      bool usePrior, bool useDelta, int tid=0);
 	template<int mode> void addPoint(EFPoint* p, EnergyFunctional const * const ef, int tid=0);
 	int nframes[NUM_THREADS];
 	EIGEN_ALIGN16 AccumulatorApprox* acc[NUM_THREADS];
