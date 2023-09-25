@@ -286,8 +286,7 @@ struct FrameHessian {
 
 };
 
-struct CalibHessian
-{
+struct CalibHessian {
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 	static int instanceCounter;
 
