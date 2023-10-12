@@ -56,6 +56,8 @@ typedef Sophus::SO3d SO3;
 #define CPARS 4    // 似乎是相机内参
 #endif
 
+#define ROOTBA
+
 typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatXX;
 //typedef Eigen::Matrix<double,CPARS,CPARS> MatCC;
 //#define MatToDynamic(x) MatXX(x)

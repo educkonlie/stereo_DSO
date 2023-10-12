@@ -194,8 +194,8 @@ void EnergyFunctional::accumulateAF_MT(MatXX &H, VecX &b, bool MT)
     for(EFFrame* f : frames)
         for(EFPoint* p : f->points)
             accSSE_top_A->addPoint<0>(p,this);
-        accSSE_top_A->stitchDouble(H,b,this,true, true);
-        resInA = accSSE_top_A->nres[0];
+    accSSE_top_A->stitchDouble(H,b,this,true, true);
+    resInA = accSSE_top_A->nres[0];
 }
 void EnergyFunctional::accumulateSCF_MT(MatXX &H, VecX &b, bool MT)
 {
@@ -224,8 +224,11 @@ void EnergyFunctional::resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT)
 		h->data->step.tail<2>().setZero();
 
 		for(EFFrame* t : frames)
-			xAd[nFrames*h->idx + t->idx] = xF.segment<8>(CPARS+8*h->idx).transpose() *   adHostF[h->idx+nFrames*t->idx]
-			            + xF.segment<8>(CPARS+8*t->idx).transpose() * adTargetF[h->idx+nFrames*t->idx];
+            // xAd[h][t] = x[h][0].t() * adHostF[t][h] + x[t][0].t() * adTargetF[t][h]
+			xAd[nFrames*h->idx + t->idx] = xF.segment<8>(CPARS+8*h->idx).transpose()
+                                           * adHostF[h->idx+nFrames*t->idx]
+                                           + xF.segment<8>(CPARS+8*t->idx).transpose()
+                                             * adTargetF[h->idx+nFrames*t->idx];
 	}
     //! 通过逆深度对于光度内参的偏导，乘以光度参数的delta，可以得到优化更新的逆深度
     resubstituteFPt(cstep, xAd, 0, allPoints.size(), 0,0);
@@ -615,60 +618,53 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 	assert(EFAdjointsValid);
 	assert(EFIndicesValid);
 
-	MatXX /*HL_top,*/ HA_top, H_sc;
-	VecX  /*bL_top,*/ bA_top, bM_top, b_sc;
+	MatXX  HA_top, H_sc;
+	VecX   bA_top, bM_top, b_sc;
+
+#ifdef ROOTBA
+    test_QR_decomp();
+    exit(1);
+#endif
 
     // 边缘化后的求解，三个元素。详见涂金戈。
     // A是不受边缘化影响的残差和雅克比， L是线性化的残差和雅克比，SCF是计算舒尔补
     // 不过其实一个已经线性化的残差都没有
 	accumulateAF_MT(HA_top, bA_top,multiThreading);
-//    std::cout << "HA_top: " << HA_top << std::endl;
-//    std::cout << "bA_top: " << bA_top << std::endl;
-//  HL_top和bL_top基本上都是0， 只有左上角的相机内参矩阵有数值，该数值来源于先验，可以把先验加成移到AF去
-//	accumulateLF_MT(HL_top, bL_top,multiThreading);
-//    std::cout << "HL_top: " << HL_top << std::endl;
-//    std::cout << "bL_top: " << bL_top << std::endl;
 //  跟上次邊緣化的幀無關的points們，加上新補增的points們，計算最新的殘差，SC掉points，生成最新的H, b系統
 	accumulateSCF_MT(H_sc, b_sc,multiThreading);
 
-//    std::cout << "bM = bM + HM * delta. the delta: " << getStitchedDeltaF() << std::endl;
-//std::cout << "bM dimension: " << bM.size() << std::endl;
-//   rkf
+    //! 这里的关键是zero点，也就是固定线性化点，之前制作HM, bM的时候，在固定线性化点做了一次优化，然后再回退，
+    //! 即回退到了zero点，制作了HM，bM;
+    //! 之后应该是在前端一直保存了zero点，所以每次要使用这个祖传HM, bM的时候，都需要现求一次state - state_zero
+    //! 然后将这个bM调整如下
 	bM_top = (bM+ HM * getStitchedDeltaF());
-//bM_top = bM;
+//    std::cout << "getStitchedDeltaF(): " << getStitchedDeltaF() << std::endl;
 
 	MatXX HFinal_top;
 	VecX bFinal_top;
 
     {  // 就是 M + A + SC，只是因爲lambda稍有改動
-		HFinal_top = /*HL_top +*/ HM + HA_top;
-		bFinal_top = /*bL_top +*/ bM_top + bA_top - b_sc;
+		HFinal_top =  HM + HA_top;
+		bFinal_top =  bM_top + bA_top - b_sc;
 
-        std::cout << "bM size: " << bM.size() << std::endl;
-        std::cout << "bA_top size: " << bA_top.size() << std::endl;
-        std::cout << "bM_top size: " << bM_top.size() << std::endl;
+//        std::cout << "bM size: " << bM.size() << std::endl;
+//        std::cout << "bA_top size: " << bA_top.size() << std::endl;
+//        std::cout << "bM_top size: " << bM_top.size() << std::endl;
 
         // lastHS和lastbS只有打印時會調用，無實際作用
 		lastHS = HFinal_top - H_sc;
 		lastbS = bFinal_top;
-#ifdef MY_LAMBDA
-		for(int i=0;i<8*nFrames+CPARS;i++) HFinal_top(i,i) += lambda * 0.1;
-        HFinal_top -= H_sc;
-#else
+
 		for(int i=0;i<8*nFrames+CPARS;i++) HFinal_top(i,i) *= (1+lambda);
         HFinal_top -= H_sc * (1.0f/(1+lambda));
-#endif
         // 上面的把HM, HA_top略爲放大，把H_sc略爲縮小，整體的HFinal_top略爲放大
+//        std::cout << "H:\n" << HFinal_top << std::endl;
+//        std::cout << "b:\n" << bFinal_top << std::endl;
 	}
+//    exit(1);
 
 	VecX x;
-//#define TEST_NULL_SPACE
-#ifdef TEST_NULL_SPACE
-    std::cout << "test null space of H" << std::endl;
-    Eigen::JacobiSVD<Eigen::MatrixXd> svd(HFinal_top, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    std::cout << svd.singularValues() <<std::endl;
-    std::cout << "test null space end" << std::endl;
-#endif
+
 //    printf("setting solverMode: %x\n", setting_solverMode);
 	if(setting_solverMode & SOLVER_SVD) {
 		VecX SVecI = HFinal_top.diagonal().cwiseSqrt().cwiseInverse();
@@ -710,12 +706,8 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 
 	lastX = x;
 
-//std::cout <<"....x: " << x.transpose() << std::endl;
-
 	//resubstituteF(x, HCalib);
-//	currentLambda= lambda;
 	resubstituteF_MT(x, HCalib,multiThreading);
-//	currentLambda=0;
 }
 void EnergyFunctional::makeIDX()
 {
@@ -748,6 +740,55 @@ VecX EnergyFunctional::getStitchedDeltaF() const
         d.segment<8>(CPARS+8*h) = frames[h]->delta;
 	return d;
 }
+
+#ifdef ROOTBA
+void EnergyFunctional::QR_decomp(Vec8f A, int i, int j, Mat88f &Q, Vec8f &R)
+{
+    Q.setIdentity();
+    R = A;
+    float a = R(i);
+    float b = R(j);
+    float r = std::sqrt(a * a + b * b);
+    float c = a / r;
+    float s = -b / r;
+    Q(i, i) = c;
+    Q(i, j) = s;
+    Q(j, i) = -s;
+    Q(j, j) = c;
+
+    R(i) = r;
+    R(j) = 0.0;
+}
+void EnergyFunctional::test_QR_decomp()
+{
+    Vec8f A = Vec8f::Zero();
+    A << 3.5, 6.3, 7.7, 8.8, 9.6, 10.1, 2.3, 9.9;
+    Mat88f Q;
+    Mat88f Q_total = Mat88f::Identity();
+    Vec8f A_orig = A;
+    Vec8f R;
+
+    for (int j = 7; j >= 1; j--) {
+        printf("[%d] [%d]\n", j - 1, j);
+        this->QR_decomp(A, j - 1, j, Q, R);
+        std::cout << "A:    " << A.transpose() << std::endl;
+        std::cout << "R:    " << R.transpose() << std::endl;
+        std::cout << "QR:   " << (Q * R).transpose() << std::endl;
+        Q_total = Q_total * Q;
+        std::cout << std::endl;
+        A = R;
+    }
+    std::cout << " finally R:    " << R.transpose() << std::endl;
+    std::cout << " original A:    " << A_orig.transpose() << std::endl;
+    std::cout << " finally A:    " << (Q_total * R).transpose() << std::endl;
+
+    std::cout << "Q_total:" << std::endl << Q_total << std::endl;
+    Eigen::Matrix<float, 8, 7> Q_2 = Q_total.block<8, 7>(0, 1);
+    std::cout << "Q_2 * Q_2_T:" << std::endl
+            << Q_2 * Q_2.transpose() << std::endl;
+
+}
+#endif
 
 
 }

@@ -46,6 +46,7 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 	float Hdd_acc=0;
 	VecCf  Hcd_acc = VecCf::Zero();
 
+    //! 对该点所有的残差计算相应的矩阵块。Top里的是该残差对应的C, xi部分的偏导，Sch里的是该残差对应的舒尔补
 	for(EFResidual* r : p->residualsAll) {
 		if(mode==0) {
             assert(!r->isLinearized);

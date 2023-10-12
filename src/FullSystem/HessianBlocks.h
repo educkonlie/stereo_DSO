@@ -205,14 +205,18 @@ struct FrameHessian {
 		PRE_camToWorld = PRE_worldToCam.inverse();
 		//setCurrentNullspace();
 	};
+    //! 这里是滑窗优化中，专用于给新帧设置0作为state_zero
+    //! 也就是说每一帧在第一次参加完滑窗优化后，会设置线性化点，
+    //! 并且设置state_zero的\xi部分为0（aff的a, b除外）
 	inline void setEvalPT(const SE3 &worldToCam_evalPT, const Vec10 &state)
 	{
-
 		this->worldToCam_evalPT = worldToCam_evalPT;
 		setState(state);
 		setStateZero(state);
 	};
 
+    //! 在滑窗优化前设置，即前端tracking的结果
+    //! 对于滑窗优化来说，这就是滑窗中的新帧在第一次滑窗优化前的值
 	inline void setEvalPT_scaled(const SE3 &worldToCam_evalPT, const AffLight &aff_g2l)
 	{
 		Vec10 initial_state = Vec10::Zero();
@@ -248,6 +252,7 @@ struct FrameHessian {
 		frameEnergyTH = 8*8*patternNum;
 
 		debugImage=0;
+        state_zero = Vec10::Zero();
 	};
 
 

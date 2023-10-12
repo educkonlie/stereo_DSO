@@ -864,9 +864,7 @@ void FullSystem::flagPointsForRemoval()
                         // 计算残差值
 						r->applyRes();
 						if(r->efResidual->isActive()) {
-                            // 从此这个r只能用H * delta模拟更新了
-                            // 但是在DSO中，也就这一次模拟，之后它会被丢弃
-                            // 如果不被丢弃，就会体现在计算L的过程中，后续会继续模拟更新
+                            //! 固定线性化
 							r->efResidual->fixLinearizationF(ef);
 							ngoodRes++;
 						}

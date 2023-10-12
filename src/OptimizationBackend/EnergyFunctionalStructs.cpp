@@ -46,13 +46,17 @@ void EFResidual::takeDataF()
 
 	JpJdF.segment<2>(6) = J->JabJIdx*J->Jpdd;
 }
-
+//! EFFrame创建时候会取一次data
 void EFFrame::takeData()
 {
     //! 这个prior是真先验，直接就是DSO写死的常数(经验数据)
 	prior = data->getPrior().head<8>();
     //! 这个delta才是取之前计算得到的值
+//    assert(data->state_zero.head<6>().squaredNorm() < 1e-20);
+//    std::cout << "state_zero: " << data->get_state_zero().head<10>() << std::endl;
+//! data->state_zero除了aff的a,b外，恒为0
 	delta = data->get_state_minus_stateZero().head<8>();
+//    std::cout << "delta: " << data->get_state_minus_stateZero().head<8>() << std::endl;
     //! getPriorZero()为0
 	delta_prior = data->get_state().head<8>();
 

@@ -64,6 +64,7 @@ public:
   {
 	  A += w*L*R.transpose();
 	  numIn1++;
+//      num++;
 	  shiftUp(false);
   }
 
@@ -116,6 +117,7 @@ public:
   {
 	  A += w*L;
 	  numIn1++;
+//      num++;
       //! 去掉shiftUp试试
       //! 确实去掉了也无所谓
 	  shiftUp(false);
@@ -157,6 +159,7 @@ public:
 
   inline void initialize()
   {
+      //! 这可能是为了数值稳定性，可以看TAOCP第2卷
 	memset(Data,0, sizeof(float)*60);
 	memset(Data1k,0, sizeof(float)*60);
 	memset(Data1m,0, sizeof(float)*60);

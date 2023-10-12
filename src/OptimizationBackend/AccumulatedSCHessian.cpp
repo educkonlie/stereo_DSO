@@ -65,8 +65,20 @@ void AccumulatedSCHessianSSE::addPoint(EFPoint* p, int tid)
     //! L * w * R.t() => i X j => A
     //! acc<i><j> A += L * w * R.t()
     //! w = H_inv
+#ifndef ACC
+        // A += w*L*R.transpose();
+    accHcc[tid].A += Hcd * (p->HdiF) * Hcd.transpose();
+    accHcc[tid].num++;
+#else
 	accHcc[tid].update(Hcd,Hcd,p->HdiF);
-	accbc[tid].update(Hcd, p->bdSumF * p->HdiF);
+#endif
+#ifndef ACC
+       // A += w*L;
+	accbc[tid].A += (p->bdSumF * p->HdiF) * Hcd;
+    accbc[tid].num++;
+#else
+        accbc[tid].update(Hcd, p->bdSumF * p->HdiF);
+#endif
 
 	assert(std::isfinite((float)(p->HdiF)));
 
@@ -79,12 +91,31 @@ void AccumulatedSCHessianSSE::addPoint(EFPoint* p, int tid)
 			if(!r2->isActive()) continue;
 
             //! accD[target2][target1][host]
+#ifdef ACC
 			accD[tid][r1ht+r2->targetIDX*nFrames2].update(r1->JpJdF, r2->JpJdF, p->HdiF);
+#else
+//            A += w*L*R.transpose();
+            accD[tid][r1ht + r2->targetIDX * nFrames2].A += (r1->JpJdF) * (p->HdiF) * (r2->JpJdF).transpose();
+            accD[tid][r1ht + r2->targetIDX * nFrames2].num++;
+#endif
 		}
 
         //! accE[t][h], accEB[t][h]
+        //! 这里可以把acc机制去掉，进一步简化代码
+#ifdef ACC
 		accE[tid][r1ht].update(r1->JpJdF, Hcd, p->HdiF);
+#else
+//        A += w*L*R.transpose();
+        accE[tid][r1ht].A += (r1->JpJdF) * (p->HdiF) * Hcd.transpose();
+        accE[tid][r1ht].num++;
+#endif
+#ifdef ACC
 		accEB[tid][r1ht].update(r1->JpJdF,p->HdiF*p->bdSumF);
+#else
+        // A += w*L;
+        accEB[tid][r1ht].A += (p->HdiF * p->bdSumF) * (r1->JpJdF);
+        accEB[tid][r1ht].num++;
+#endif
 	}
 }
 
@@ -103,12 +134,23 @@ void AccumulatedSCHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional c
 			int jIdx = CPARS+j*8;
 			int ijIdx = i+nf*j;
 
+#ifdef ACC
 			accE[tid][ijIdx].finish();
 			accEB[tid][ijIdx].finish();
+#endif
 
+#ifdef ACC
 			Mat8C accEM = accE[tid][ijIdx].A1m.cast<double>();
+#else
+            Mat8C accEM = accE[tid][ijIdx].A.cast<double>();
+#endif
+#ifdef ACC
 			Vec8 accEBV = accEB[tid][ijIdx].A1m.cast<double>();
+#else
+            Vec8 accEBV = accEB[tid][ijIdx].A.cast<double>();
+#endif
 
+            //! 8XC += 8X8 * 8XC
 			H.block<8,CPARS>(iIdx,0) += EF->adHost[ijIdx] * accEM;
 			H.block<8,CPARS>(jIdx,0) += EF->adTarget[ijIdx] * accEM;
 
@@ -120,9 +162,18 @@ void AccumulatedSCHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional c
 				int ijkIdx = ijIdx + k*nframes2;
 				int ikIdx = i+nf*k;
 
+                //! accD[target2][target1][host]
+                //! 由共host的两个残差组合而成
+#ifdef ACC
 				accD[tid][ijkIdx].finish();
+#endif
 				if(accD[tid][ijkIdx].num == 0) continue;
+
+#ifdef ACC
 				Mat88 accDM = accD[tid][ijkIdx].A1m.cast<double>();
+#else
+                Mat88 accDM = accD[tid][ijkIdx].A.cast<double>();
+#endif
 
                 //! 对于相对位姿(t, h)的偏导转为对于绝对位姿t, h的偏导，并且因为是在制作H，会有四块
 				H.block<8,8>(iIdx, iIdx) +=
@@ -136,11 +187,21 @@ void AccumulatedSCHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional c
 			}
 		}
 
+#ifdef ACC
 	accHcc[tid].finish();
 	accbc[tid].finish();
+#endif
     //! H左上角<CPARS, CPARS>块和对应的b最上面<CPARS>行
+#ifdef ACC
 	H.topLeftCorner<CPARS,CPARS>() = accHcc[tid].A1m.cast<double>();
+#else
+    H.topLeftCorner<CPARS,CPARS>() = accHcc[tid].A.cast<double>();
+#endif
+#ifdef ACC
 	b.head<CPARS>() = accbc[tid].A1m.cast<double>();
+#else
+    b.head<CPARS>() = accbc[tid].A.cast<double>();
+#endif
 
 	// ----- new: copy transposed parts for calibration only.
 	for(int h=0;h<nf;h++) {
