@@ -202,13 +202,12 @@ void EnergyFunctional::accumulateAF_MT(MatXX &H, VecX &b, bool MT)
 
         for (EFFrame *f : frames)
             for (EFPoint *p : f->points) {
-                accSSE_top_A->addPoint<0>(p, this, 0);
+//                accSSE_top_A->addPoint<0>(p, this, 0);
+                p->Hcd_accAF = VecCf::Zero();
+                p->Hdd_accAF = 0.0;
+                p->bd_accAF = 0.0;
                 for (EFResidual *r: p->residualsAll) {
                     my_stack[r->hostIDX + r->targetIDX * nFrames].push_back(r);
-
-//                    r->point->Hdd_accAF = 0.0;
-//                    r->point->bd_accAF = 0.0;
-//                    r->point->Hcd_accAF = VecCf::Zero();
                 }
             }
         accSSE_top_A->my_addPoint<0>(this, 0);
@@ -534,9 +533,12 @@ void EnergyFunctional::marginalizePointsF()
         my_stack[i].clear();
 
     for(EFPoint* p : allPointsToMarg) {
-        accSSE_top_A->addPoint<2>(p, this, 0);
-        accSSE_bot->addPoint(p,false);
-        removePoint(p);
+//        accSSE_top_A->addPoint<2>(p, this, 0);
+        p->Hcd_accAF = VecCf::Zero();
+        p->Hdd_accAF = 0.0;
+        p->bd_accAF = 0.0;
+//        accSSE_bot->addPoint(p,false);
+//        removePoint(p);
         for (EFResidual *r: p->residualsAll) {
             my_stack[r->hostIDX + r->targetIDX * nFrames].push_back(r);
 //            r->point->Hdd_accAF = 0.0;
@@ -546,12 +548,12 @@ void EnergyFunctional::marginalizePointsF()
     }
 
     accSSE_top_A->my_addPoint<2>(this, 0);
-//	for(EFPoint* p : allPointsToMarg) {
-//        // rkf 去掉fixLinearizationF試試
+
+	for(EFPoint* p : allPointsToMarg) {
 //		accSSE_top_A->addPoint<2>(M, Mb, p,this);
-//		accSSE_bot->addPoint(p,false);
-//		removePoint(p);
-//	}
+		accSSE_bot->addPoint(p,false);
+		removePoint(p);
+	}
 
 	accSSE_top_A->stitchDouble(M,Mb,this,false,false);
 

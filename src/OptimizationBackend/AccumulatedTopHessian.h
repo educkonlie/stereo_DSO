@@ -82,7 +82,10 @@ public:
 	}
 	void stitchDouble(MatXX &H, VecX &b, EnergyFunctional const * const EF,
                       bool usePrior, bool useDelta, int tid=0);
+
+#if 0
 	template<int mode> void addPoint(EFPoint* p, EnergyFunctional const * const ef, int tid=0);
+#endif
     template<int mode> void my_addPoint(EnergyFunctional const * const ef,
                                                int tid=0);
 	int nframes[NUM_THREADS];

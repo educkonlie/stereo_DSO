@@ -33,77 +33,9 @@
 
 namespace dso
 {
-#if 0
-    template<int mode>
-    void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * const ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
-    {
-        assert(mode==0 || mode==2);
-
-        VecCf dc = ef->cDeltaF;
-
-        float bd_acc=0;
-        float Hdd_acc=0;
-        VecCf  Hcd_acc = VecCf::Zero();
-
-        //! 对该点所有的残差计算相应的矩阵块。Top里的是该残差对应的C, xi部分的偏导，Sch里的是该残差对应的舒尔补
-        int old_hostIdx = -1;
-        for(EFResidual* r : p->residualsAll) {
-            if(mode==0) {
-                assert(!r->isLinearized);
-                if(r->isLinearized || !r->isActive()) continue;
-            }
-            if(mode==2) {
-                // 这里还是有已经固定线性化的残差的
-//            assert(!r->isLinearized);
-                if(!r->isActive()) continue;
-                assert(r->isLinearized);
-            }
-
-            //! for test purpose. 同一个point下的residual都是同一个host。
-            if (old_hostIdx != -1) {
-                assert(r->hostIDX == old_hostIdx);
-            } else {
-                old_hostIdx = r->hostIDX;
-            }
-
-            RawResidualJacobian* rJ = r->J;
-            int htIDX = r->hostIDX + r->targetIDX*nframes[tid];
-            Mat18f dp = ef->adHTdeltaF[htIDX];
-
-            VecNRf resApprox;
-            if(mode==0)
-                resApprox = rJ->resF;
-            if(mode==2)
-                resApprox = r->res_toZeroF;
-
-            // need to compute JI^T * r, and Jab^T * r. (both are 2-vectors).
-            Vec2f JI_r(0,0);
-            Vec2f Jab_r(0,0);
-            float rr=0;
-            for(int i=0;i<patternNum;i++) {
-                JI_r[0] += resApprox[i] *rJ->JIdx[0][i];
-                JI_r[1] += resApprox[i] *rJ->JIdx[1][i];
-                Jab_r[0] += resApprox[i] *rJ->JabF[0][i];
-                Jab_r[1] += resApprox[i] *rJ->JabF[1][i];
-                rr += resApprox[i]*resApprox[i];
-            }
-
-            Vec2f Ji2_Jpdd = rJ->JIdx2 * rJ->Jpdd;
-            bd_acc +=  JI_r[0]*rJ->Jpdd[0] + JI_r[1]*rJ->Jpdd[1];
-            Hdd_acc += Ji2_Jpdd.dot(rJ->Jpdd);
-            Hcd_acc += rJ->Jpdc[0]*Ji2_Jpdd[0] + rJ->Jpdc[1]*Ji2_Jpdd[1];
-
-            nres[tid]++;
-        }
-
-        p->Hdd_accAF = Hdd_acc;
-        p->bd_accAF = bd_acc;
-        p->Hcd_accAF = Hcd_acc;
-    }
-#endif
     //   Top的addPoint和Bot的addPoint
 
-#if 1
+#if 0
 template<int mode>
 void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * const ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
 {
@@ -266,7 +198,7 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
     {
         assert(mode==0 || mode==2);
 
-        return;
+//        return;
 
         VecCf dc = ef->cDeltaF;
 
@@ -300,16 +232,16 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
                         resApprox = r->res_toZeroF;
 
                     // need to compute JI^T * r, and Jab^T * r. (both are 2-vectors).
-//                    Vec2f JI_r(0, 0);
-//                    Vec2f Jab_r(0, 0);
-//                    float rr = 0;
-//                    for (int i = 0; i < patternNum; i++) {
-//                        JI_r[0] += resApprox[i] * rJ->JIdx[0][i];
-//                        JI_r[1] += resApprox[i] * rJ->JIdx[1][i];
-//                        Jab_r[0] += resApprox[i] * rJ->JabF[0][i];
-//                        Jab_r[1] += resApprox[i] * rJ->JabF[1][i];
-//                        rr += resApprox[i] * resApprox[i];
-//                    }
+                    Vec2f JI_r(0, 0);
+                    Vec2f Jab_r(0, 0);
+                    float rr = 0;
+                    for (int i = 0; i < patternNum; i++) {
+                        JI_r[0] += resApprox[i] * rJ->JIdx[0][i];
+                        JI_r[1] += resApprox[i] * rJ->JIdx[1][i];
+                        Jab_r[0] += resApprox[i] * rJ->JabF[0][i];
+                        Jab_r[1] += resApprox[i] * rJ->JabF[1][i];
+                        rr += resApprox[i] * resApprox[i];
+                    }
                     //! 打印host, target, C, xi, ab
 //        std::cout << "C:\n" << rJ->JIdx[0] * rJ->Jpdc[0].transpose() +
 //                rJ->JIdx[1] * rJ->Jpdc[1].transpose() << std::endl;
@@ -323,6 +255,7 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 
 
 //        std::cout << "point has " << p->residualsAll.size() << " residuals" << std::endl;
+#ifndef USE_ACC_INSTEAD_OF_myH
                     Eigen::Matrix<float, 8, 13> Jr = Eigen::Matrix<float, 8, 13>::Zero();
                     Jr.block<8, 4>(0, 0) = rJ->JIdx[0] * rJ->Jpdc[0].transpose()
                                            + rJ->JIdx[1] * rJ->Jpdc[1].transpose();
@@ -332,34 +265,41 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
                     Jr.block<8, 1>(0, 11) = rJ->JabF[1];
                     Jr.block<8, 1>(0, 12) = resApprox;
                     myH[htIDX] += Jr.transpose() * Jr;
+#else
+                    acc[tid][htIDX].update(
+                            rJ->Jpdc[0].data(), rJ->Jpdxi[0].data(),
+                            rJ->Jpdc[1].data(), rJ->Jpdxi[1].data(),
+                            rJ->JIdx2(0,0),rJ->JIdx2(0,1),rJ->JIdx2(1,1));
 
-                    /*Eigen::Matrix<float, 8, 4> C = rJ->JIdx[0] * rJ->Jpdc[0].transpose()
-                                                   + rJ->JIdx[1] * rJ->Jpdc[1].transpose();
-                    Eigen::Matrix<float, 8, 6> Xi = rJ->JIdx[0] * rJ->Jpdxi[0].transpose()
-                                                    + rJ->JIdx[1] * rJ->Jpdxi[1].transpose();
-                    Eigen::Matrix<float, 8, 2> Jab = Eigen::Matrix<float, 8, 2>::Zero();
-                    Jab.block<8, 1>(0, 0) = rJ->JabF[0];
-                    Jab.block<8, 1>(0, 1) = rJ->JabF[1];
 
-                    H[htIDX].block<4, 4>(0, 0) += C.transpose() * C;
-                    H[htIDX].block<6, 6>(4, 4) += Xi.transpose() * Xi;
-                    H[htIDX].block<2, 2>(10, 10) += Jab.transpose() * Jab;
-                    H[htIDX].block<1, 1>(12, 12) += resApprox.transpose() * resApprox;*/
+                    acc[tid][htIDX].updateBotRight(
+                            rJ->Jab2(0,0), rJ->Jab2(0,1), Jab_r[0],
+                            rJ->Jab2(1,1), Jab_r[1],rr);
 
-//                    Vec2f Ji2_Jpdd = rJ->JIdx2 * rJ->Jpdd;
+                    acc[tid][htIDX].updateTopRight(
+                            rJ->Jpdc[0].data(), rJ->Jpdxi[0].data(),
+                            rJ->Jpdc[1].data(), rJ->Jpdxi[1].data(),
+                            rJ->JabJIdx(0,0), rJ->JabJIdx(0,1),
+                            rJ->JabJIdx(1,0), rJ->JabJIdx(1,1),
+                            JI_r[0], JI_r[1]);
+#endif
+#if 1
+                    nres[tid]++;
 
-//                    nres[tid]++;
-
-//                    r->point->Hdd_accAF += Ji2_Jpdd.dot(rJ->Jpdd);
-//                    r->point->bd_accAF += JI_r[0] * rJ->Jpdd[0] + JI_r[1] * rJ->Jpdd[1];
-//                    r->point->Hcd_accAF += rJ->Jpdc[0] * Ji2_Jpdd[0] + rJ->Jpdc[1] * Ji2_Jpdd[1];
+                    Vec2f Ji2_Jpdd = rJ->JIdx2 * rJ->Jpdd;
+                    r->point->Hdd_accAF += Ji2_Jpdd.dot(rJ->Jpdd);
+                    r->point->bd_accAF += JI_r[0] * rJ->Jpdd[0] + JI_r[1] * rJ->Jpdd[1];
+                    r->point->Hcd_accAF += rJ->Jpdc[0] * Ji2_Jpdd[0] + rJ->Jpdc[1] * Ji2_Jpdd[1];
+#endif
                 }
             }
     }
 #endif
+#if 0
 template void AccumulatedTopHessianSSE::addPoint<0>(EFPoint* p, EnergyFunctional const * const ef, int tid);
 template void AccumulatedTopHessianSSE::addPoint<1>(EFPoint* p, EnergyFunctional const * const ef, int tid);
 template void AccumulatedTopHessianSSE::addPoint<2>(EFPoint* p, EnergyFunctional const * const ef, int tid);
+#endif
 
 template void AccumulatedTopHessianSSE::my_addPoint<0>(EnergyFunctional const * const ef, int tid);
 template void AccumulatedTopHessianSSE::my_addPoint<2>(EnergyFunctional const * const ef, int tid);
@@ -376,7 +316,7 @@ void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional 
 			int tIdx = CPARS+t*8;
 			int aidx = h+nframes[tid]*t;
 
-#if 0
+#ifdef USE_ACC_INSTEAD_OF_myH
 			acc[tid][aidx].finish();
 			if(acc[tid][aidx].num==0) continue;
 			MatPCPC accH = acc[tid][aidx].H.cast<double>();
