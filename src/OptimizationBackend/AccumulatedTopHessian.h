@@ -48,23 +48,33 @@ public:
 			acc[tid]=0;
 			nframes[tid]=0;
 		}
+        myH = NULL;
 	};
 	inline ~AccumulatedTopHessianSSE()
 	{
 		for(int tid=0;tid < NUM_THREADS; tid++) {
 			if(acc[tid] != 0) delete[] acc[tid];
 		}
+        if (myH != 0) delete[] myH;
 	};
 
 	inline void setZero(int nFrames, int min=0, int max=1, Vec10* stats=0, int tid=0)
 	{
+//        my_big_H.setZero();
+//        my_big_b.setZero();
+//        my_big_H = new MatXX::Zero(nframes[tid]*8+CPARS, nframes[tid]*8+CPARS);
+//        my_big_b = new VecX::Zero(nframes[tid]*8+CPARS);
 		if(nFrames != nframes[tid]) {
 			if(acc[tid] != 0) delete[] acc[tid];
 			acc[tid] = new AccumulatorApprox[nFrames*nFrames];
+            if(myH != 0) delete[] myH;
+            myH = new Mat1313f[nFrames * nFrames];
 		}
 
-		for(int i=0;i<nFrames*nFrames;i++)
-		{ acc[tid][i].initialize(); }
+		for(int i=0;i<nFrames*nFrames;i++) {
+            acc[tid][i].initialize();
+            myH[i].setZero();
+        }
 
 		nframes[tid]=nFrames;
 		nres[tid]=0;
@@ -73,9 +83,16 @@ public:
 	void stitchDouble(MatXX &H, VecX &b, EnergyFunctional const * const EF,
                       bool usePrior, bool useDelta, int tid=0);
 	template<int mode> void addPoint(EFPoint* p, EnergyFunctional const * const ef, int tid=0);
+    template<int mode> void my_addPoint(EnergyFunctional const * const ef,
+                                               int tid=0);
 	int nframes[NUM_THREADS];
 	EIGEN_ALIGN16 AccumulatorApprox* acc[NUM_THREADS];
 	int nres[NUM_THREADS];
+
+    Mat1313f *myH;
+
+//    MatXX *my_big_H;
+//    VecX *my_big_b;
 
 private:
 

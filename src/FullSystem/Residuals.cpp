@@ -226,6 +226,8 @@ double PointFrameResidual::linearize(CalibHessian* HCalib)
 
 			wJI2_sum += hw*hw*(hitColor[1]*hitColor[1]+hitColor[2]*hitColor[2]);
 
+            assert(setting_affineOptModeA >= 0);
+            assert(setting_affineOptModeB >= 0);
 			if(setting_affineOptModeA < 0) J->JabF[0][idx]=0;
 			if(setting_affineOptModeB < 0) J->JabF[1][idx]=0;
 

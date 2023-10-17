@@ -147,6 +147,9 @@ private:
 
 	std::vector<EFPoint*> allPoints;
 	std::vector<EFPoint*> allPointsToMarg;
+#ifdef ROOTBA_PREPARE
+    std::vector<EFResidual *> my_stack[100];
+#endif
 
 };
 #define ACC

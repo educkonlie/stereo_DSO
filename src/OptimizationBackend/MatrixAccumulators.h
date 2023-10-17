@@ -355,7 +355,7 @@ inline void finish()
 	  BotRight_Data[5] += a22;
   }
 
-private:
+//private:
   EIGEN_ALIGN16 float Data[60];
   EIGEN_ALIGN16 float Data1k[60];
   EIGEN_ALIGN16 float Data1m[60];

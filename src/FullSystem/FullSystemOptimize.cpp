@@ -346,6 +346,7 @@ float FullSystem::optimize(int mnumOptIts)
         // 必须是活跃点
 		for(PointHessian* ph : fh->pointHessians) {
 			for(PointFrameResidual* r : ph->residuals) {
+//                std::printf("one point has [%ld] residuals\n", ph->residuals.size());
                 // FEJ, not push in already linearized residuals
                 // 所有的残差都是没有线性化过的，也就是之前的线性化过的残差已经被扔了。
                 assert(!r->efResidual->isLinearized);

@@ -29,6 +29,7 @@ include_directories(${Glog_INCLUDE_DIRS})
 add_definitions("-DENABLE_SSE")
 set(CMAKE_CXX_FLAGS
    "${SSE_FLAGS} -O3 -g  -std=c++17 -march=native"
+#		"${SSE_FLAGS} -O3 -g  -std=c++17 -march=native -DEIGEN_DONT_VECTORIZE"
 #   "${SSE_FLAGS} -O3 -g -std=c++0x -fno-omit-frame-pointer"
 )
 
