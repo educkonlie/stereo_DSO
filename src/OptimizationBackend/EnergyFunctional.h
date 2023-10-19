@@ -90,7 +90,6 @@ public:
 	void setAdjointsF(CalibHessian* Hcalib);
 
 #ifdef ROOTBA
-    void QR_decomp(Vec8f A, int i, int j, Mat88f &Q, Vec8f &R);
     void test_QR_decomp();
 #endif
 

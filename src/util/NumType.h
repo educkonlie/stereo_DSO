@@ -56,7 +56,7 @@ typedef Sophus::SO3d SO3;
 #define CPARS 4    // 似乎是相机内参
 #endif
 
-//#define ROOTBA
+#define ROOTBA
 #define ROOTBA_PREPARE
 
 //#define USE_ACC_INSTEAD_OF_myH

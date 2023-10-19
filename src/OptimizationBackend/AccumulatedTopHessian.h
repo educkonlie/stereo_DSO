@@ -49,6 +49,7 @@ public:
 			nframes[tid]=0;
 		}
         myH = NULL;
+        myH_rootba = NULL;
 	};
 	inline ~AccumulatedTopHessianSSE()
 	{
@@ -56,6 +57,7 @@ public:
 			if(acc[tid] != 0) delete[] acc[tid];
 		}
         if (myH != 0) delete[] myH;
+        if (myH_rootba != 0) delete[] myH_rootba;
 	};
 
 	inline void setZero(int nFrames, int min=0, int max=1, Vec10* stats=0, int tid=0)
@@ -66,14 +68,17 @@ public:
 //        my_big_b = new VecX::Zero(nframes[tid]*8+CPARS);
 		if(nFrames != nframes[tid]) {
 			if(acc[tid] != 0) delete[] acc[tid];
-			acc[tid] = new AccumulatorApprox[nFrames*nFrames];
+            acc[tid] = new AccumulatorApprox[nFrames*nFrames];
             if(myH != 0) delete[] myH;
             myH = new Mat1313f[nFrames * nFrames];
+            if(myH_rootba != 0) delete[] myH_rootba;
+            myH_rootba = new Mat1313f[nFrames * nFrames];
 		}
 
 		for(int i=0;i<nFrames*nFrames;i++) {
             acc[tid][i].initialize();
             myH[i].setZero();
+            myH_rootba[i].setZero();
         }
 
 		nframes[tid]=nFrames;
@@ -82,6 +87,12 @@ public:
 	}
 	void stitchDouble(MatXX &H, VecX &b, EnergyFunctional const * const EF,
                       bool usePrior, bool useDelta, int tid=0);
+
+#ifdef ROOTBA
+        void stitchDouble_rootba(MatXX &H, VecX &b, EnergyFunctional const * const EF,
+                          bool usePrior, bool useDelta, int tid=0);
+        void QR_decomp(Vec8f A, Mat88f &Q, Vec8f &R);
+#endif
 
 #if 0
 	template<int mode> void addPoint(EFPoint* p, EnergyFunctional const * const ef, int tid=0);
@@ -93,6 +104,7 @@ public:
 	int nres[NUM_THREADS];
 
     Mat1313f *myH;
+    Mat1313f *myH_rootba;
 
 //    MatXX *my_big_H;
 //    VecX *my_big_b;

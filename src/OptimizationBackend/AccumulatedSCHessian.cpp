@@ -83,6 +83,7 @@ void AccumulatedSCHessianSSE::addPoint(EFPoint* p, int tid)
 	assert(std::isfinite((float)(p->HdiF)));
 
 	int nFrames2 = nframes[tid]*nframes[tid];
+    //! 这里要r1 * r2，复杂度有n^2
 	for(EFResidual* r1 : p->residualsAll) {
 		if(!r1->isActive()) continue;
 		int r1ht = r1->hostIDX + r1->targetIDX*nframes[tid];

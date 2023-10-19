@@ -218,6 +218,9 @@ void EnergyFunctional::accumulateAF_MT(MatXX &H, VecX &b, bool MT)
 //    std::cout << ".................3........." << std::endl;
 
     accSSE_top_A->stitchDouble(H,b,this,true, true);
+//#ifdef ROOTBA
+//        accSSE_top_A->stitchDouble_rootba(H_rootba,b_rootba,this,true, true);
+//#endif
 
     resInA = accSSE_top_A->nres[0];
 }
@@ -523,6 +526,11 @@ void EnergyFunctional::marginalizePointsF()
 
     MatXX M, Msc;
     VecX Mb, Mbsc;
+
+#ifdef ROOTBA
+    MatXX M_rootba;
+    VecX Mb_rootba;
+#endif
     //! HM, bM是祖传的。这里M - Msc, Mb - Mbsc是本次新的增量，再加到祖传的HM，bM上。
 
 	accSSE_bot->setZero(nFrames);
@@ -556,6 +564,9 @@ void EnergyFunctional::marginalizePointsF()
 	}
 
 	accSSE_top_A->stitchDouble(M,Mb,this,false,false);
+#ifdef ROOTBA
+    accSSE_top_A->stitchDouble_rootba(M_rootba,Mb_rootba,this,false,false);
+#endif
 
     // bot指的是從bot生成（舒爾補）對應的top
 	accSSE_bot->stitchDouble(Msc,Mbsc,this);
@@ -564,10 +575,15 @@ void EnergyFunctional::marginalizePointsF()
 
 	MatXX H =  M-Msc;
     VecX b =  Mb-Mbsc;
+#ifdef ROOTBA
+    std::cout << "Mb - Mbsc: " << b.transpose() << std::endl;
+    std::cout << "Mb_rootba: " << Mb_rootba.transpose() << std::endl;
+#endif
 
     // 每一个点都对应一个完整的H, b。或者说，Marg: point -> (H_nxn, b_n)
 	HM += setting_margWeightFac*H;
 	bM += setting_margWeightFac*b;
+
 
 //    std::cout << "bM size in marg points: " << bM.size() << std::endl;
 
@@ -669,14 +685,14 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 	VecX   bA_top, bM_top, b_sc;
 
 #ifdef ROOTBA
-    test_QR_decomp();
-    exit(1);
+//    test_QR_decomp();
+//    exit(1);
 #endif
 
     // 边缘化后的求解，三个元素。详见涂金戈。
     // A是不受边缘化影响的残差和雅克比， L是线性化的残差和雅克比，SCF是计算舒尔补
     // 不过其实一个已经线性化的残差都没有
-	accumulateAF_MT(HA_top, bA_top,multiThreading);
+	accumulateAF_MT(HA_top, bA_top, multiThreading);
 //    std::cout << "H: \n" << HA_top << std::endl;
 //    std::cout << "b: \n" << bA_top << std::endl;
 //    exit(1);
@@ -711,6 +727,10 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //        std::cout << "H:\n" << HFinal_top << std::endl;
 //        std::cout << "b:\n" << bFinal_top << std::endl;
 	}
+#ifdef ROOTBA
+    HFinal_top = HM + HA_top;
+    bFinal_top = bM_top + bA_top;
+#endif
 //    exit(1);
 
 	VecX x;
@@ -792,32 +812,34 @@ VecX EnergyFunctional::getStitchedDeltaF() const
 }
 
 #ifdef ROOTBA
-void EnergyFunctional::QR_decomp(Vec8f A, int i, int j, Mat88f &Q, Vec8f &R)
-{
-    Q.setIdentity();
-    R = A;
-    float a = R(i);
-    float b = R(j);
-    float r = std::sqrt(a * a + b * b);
-    float c = a / r;
-    float s = -b / r;
-    Q(i, i) = c;
-    Q(i, j) = s;
-    Q(j, i) = -s;
-    Q(j, j) = c;
 
-    R(i) = r;
-    R(j) = 0.0;
-}
+
 void EnergyFunctional::test_QR_decomp()
 {
-    Vec8f A = Vec8f::Zero();
-    A << 3.5, 6.3, 7.7, 8.8, 9.6, 10.1, 2.3, 9.9;
-    Mat88f Q;
-    Mat88f Q_total = Mat88f::Identity();
-    Vec8f A_orig = A;
-    Vec8f R;
+    Eigen::Matrix<float, 8, 1> A;
+    A.setZero();
 
+    A << 3.5, 0.0, 7.7, 0.0, 9.6, 10.1, 2.3, 0.0;
+
+    Mat88f Q;
+    Vec8f R;
+//    Mat88f Q_total = Mat88f::Identity();
+//    Vec8f A_orig = A;
+
+//    Eigen::Matrix<float, 8, 3> R;
+//    Eigen::HouseholderQR<Eigen::Matrix<float, 8, 3> > qr;
+//    qr.compute(A);
+//    Q = qr.householderQ();
+//    R = qr.matrixQR().triangularView<Eigen::Upper>();
+
+    accSSE_top_A->QR_decomp(A, Q, R);
+
+    std::cout << "R:\n" << R.transpose() << std::endl;
+    std::cout << "A:\n" << A.transpose() << std::endl;
+    std::cout << "Qt:\n" << Q.transpose() << std::endl;
+    std::cout << "Q * R:\n" << (Q * R).transpose() << std::endl;
+    std::cout << "Qt * A:\n" << (Q.transpose() * A).transpose() << std::endl;
+/*
     for (int j = 7; j >= 1; j--) {
         printf("[%d] [%d]\n", j - 1, j);
         this->QR_decomp(A, j - 1, j, Q, R);
@@ -831,11 +853,12 @@ void EnergyFunctional::test_QR_decomp()
     std::cout << " finally R:    " << R.transpose() << std::endl;
     std::cout << " original A:    " << A_orig.transpose() << std::endl;
     std::cout << " finally A:    " << (Q_total * R).transpose() << std::endl;
+    std::cout << " finally Qt * A:    " << (Q_total.transpose() * A_orig).transpose() << std::endl;
 
     std::cout << "Q_total:" << std::endl << Q_total << std::endl;
     Eigen::Matrix<float, 8, 7> Q_2 = Q_total.block<8, 7>(0, 1);
     std::cout << "Q_2 * Q_2_T:" << std::endl
-            << Q_2 * Q_2.transpose() << std::endl;
+            << Q_2 * Q_2.transpose() << std::endl;*/
 
 }
 #endif
