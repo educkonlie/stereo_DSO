@@ -1276,12 +1276,10 @@ void FullSystem::makeKeyFrame( FrameHessian* fh)
     // 优化关键帧组
 
 	fh->frameEnergyTH = frameHessians.back()->frameEnergyTH;
-// 	LOG(INFO)<<"optimize start";
-    std::cout << "optimize start" << std::endl;
+//    std::cout << "optimize start" << std::endl;
 	float rmse = optimize(setting_maxOptIterations);
-    std::cout << "optimize end" << std::endl;
-// 	LOG(INFO)<<"rmse: "<<rmse;
-    std::cout << "rmse: " << rmse << std::endl;
+//    std::cout << "optimize end" << std::endl;
+//    std::cout << "rmse: " << rmse << std::endl;
 
 	// =========================== Figure Out if INITIALIZATION FAILED =========================
 	if(allKeyFramesHistory.size() <= 4) {

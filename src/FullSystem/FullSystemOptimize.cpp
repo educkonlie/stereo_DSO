@@ -358,7 +358,7 @@ float FullSystem::optimize(int mnumOptIts)
 		}
 	}
 
-//    if(!setting_debugout_runquiet)
+    if(!setting_debugout_runquiet)
         printf("OPTIMIZE %d pts, %d active res, %d lin res!\n",
                ef->nPoints,(int)activeResiduals.size(), 0);
 

@@ -209,7 +209,7 @@ void EnergyFunctional::accumulateAF_MT(MatXX &H, VecX &b, MatXX &H1, VecX &b1, b
             }
 
 
-//    accSSE_top_A->stitchDouble(H,b,this,true, true);
+    accSSE_top_A->stitchDouble(H,b,this,true, true);
 
 
     resInA = accSSE_top_A->nres[0];
@@ -221,7 +221,7 @@ void EnergyFunctional::accumulateSCF_MT(MatXX &H, VecX &b, bool MT)
     for(EFFrame* f : frames)
         for(EFPoint* p : f->points)
             accSSE_bot->addPoint(p);
-//    accSSE_bot->stitchDouble(H, b,this);
+    accSSE_bot->stitchDouble(H, b,this);
 }
 #endif
 //! resubstitute是输出，把后端的解输出到前端
@@ -536,20 +536,19 @@ void EnergyFunctional::marginalizePointsF()
 
 	for(EFPoint* p : allPointsToMarg) {
 //		accSSE_top_A->addPoint<2>(M, Mb, M1, Mb1, p,this);
+#ifndef ROOTBA
+        accSSE_top_A->addPoint<2>(M, Mb, M1, Mb1, p,this);
+#else
         accSSE_top_A->addPoint<2>(M, Mb, Msc, Mbsc, p,this);
-//		accSSE_bot->addPoint(p,false);
+#endif
+		accSSE_bot->addPoint(p,false);
 		removePoint(p);
 	}
 
-#if 0
 	accSSE_top_A->stitchDouble(M,Mb,this,false,false);
-#ifdef ROOTBA
-    accSSE_top_A->stitchDouble_rootba(M_rootba,Mb_rootba,this,false,false);
-#endif
-#endif
 
     // bot指的是從bot生成（舒爾補）對應的top
-//	accSSE_bot->stitchDouble(Msc,Mbsc,this);
+	accSSE_bot->stitchDouble(Msc,Mbsc,this);
 
 	resInM+= accSSE_top_A->nres[0];
 
@@ -661,8 +660,8 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 	assert(EFAdjointsValid);
 	assert(EFIndicesValid);
 
-	MatXX  HA_top, H_sc;
-	VecX   bA_top, bM_top, b_sc;
+	MatXX  HA_top, H_sc, H1;
+	VecX   bA_top, bM_top, b_sc, b1;
 
 #ifdef ROOTBA
 //    test_QR_decomp();
@@ -672,12 +671,20 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
     // 边缘化后的求解，三个元素。详见涂金戈。
     // A是不受边缘化影响的残差和雅克比， L是线性化的残差和雅克比，SCF是计算舒尔补
     // 不过其实一个已经线性化的残差都没有
+#ifdef ROOTBA
 	accumulateAF_MT(HA_top, bA_top, H_sc, b_sc, multiThreading);
+#else
+    accumulateAF_MT(HA_top, bA_top, H1, b1, multiThreading);
+#endif
 //    std::cout << "H: \n" << HA_top << std::endl;
 //    std::cout << "b: \n" << bA_top << std::endl;
 //    exit(1);
 //  跟上次邊緣化的幀無關的points們，加上新補增的points們，計算最新的殘差，SC掉points，生成最新的H, b系統
 	accumulateSCF_MT(H_sc, b_sc,multiThreading);
+
+//    std::cout << "b_sc:\n" << b_sc.transpose() << std::endl;
+//    std::cout << "b1  :\n" << b1.transpose() << std::endl;
+//    std::cout << std::endl;
 
     //! 这里的关键是zero点，也就是固定线性化点，之前制作HM, bM的时候，在固定线性化点做了一次优化，然后再回退，
     //! 即回退到了zero点，制作了HM，bM;
@@ -702,15 +709,18 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 		lastbS = bFinal_top;
 
 		for(int i=0;i<8*nFrames+CPARS;i++) HFinal_top(i,i) *= (1+lambda);
+
         HFinal_top -= H_sc * (1.0f/(1+lambda));
+
         // 上面的把HM, HA_top略爲放大，把H_sc略爲縮小，整體的HFinal_top略爲放大
 //        std::cout << "H:\n" << HFinal_top << std::endl;
 //        std::cout << "b:\n" << bFinal_top << std::endl;
 	}
 #ifdef ROOTBA
-    HFinal_top = HM + HA_top;
-    bFinal_top = bM_top + bA_top;
+//    HFinal_top =  HM + HA_top - H_sc;
+//    bFinal_top =  bM_top + bA_top - b_sc;
 #endif
+
 //    exit(1);
 
 	VecX x;

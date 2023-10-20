@@ -294,7 +294,7 @@ void CoarseTracker::makeCoarseDepthL0(std::vector<FrameHessian*> frameHessians,
         }
 #endif
     }
-    std::cout << "k_total " << k_total << " k_gt_50 " << k_gt_50 << " k_err " << k_err << std::endl;
+//    std::cout << "k_total " << k_total << " k_gt_50 " << k_gt_50 << " k_err " << k_err << std::endl;
     normalize_pyramid();
 }
 
