@@ -188,50 +188,42 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
 }
 
 // accumulates & shifts L.
-void EnergyFunctional::accumulateAF_MT(MatXX &H, VecX &b, bool MT)
+void EnergyFunctional::accumulateAF_MT(MatXX &H, VecX &b, MatXX &H1, VecX &b1, bool MT)
 {
     accSSE_top_A->setZero(nFrames);
 
 //    std::cout << ".................1........." << std::endl;
-//    H = MatXX::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
-//    b = VecX::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
+    H = MatXX::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
+    b = VecX::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
+
+        H1 = MatXX::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
+        b1 = VecX::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
 
 //    std::cout << ".................2........." << std::endl;
-        for (int i = 0; i < 100; i++)
-            my_stack[i].clear();
+//        for (int i = 0; i < 100; i++)
+//            my_stack[i].clear();
 
         for (EFFrame *f : frames)
             for (EFPoint *p : f->points) {
-//                accSSE_top_A->addPoint<0>(p, this, 0);
-                p->Hcd_accAF = VecCf::Zero();
-                p->Hdd_accAF = 0.0;
-                p->bd_accAF = 0.0;
-                for (EFResidual *r: p->residualsAll) {
-                    my_stack[r->hostIDX + r->targetIDX * nFrames].push_back(r);
-                }
+                accSSE_top_A->addPoint<0>(H, b, H1, b1, p, this, 0);
             }
-        accSSE_top_A->my_addPoint<0>(this, 0);
-//    for(EFFrame* f : frames)
-//        for(EFPoint* p : f->points)
-//            accSSE_top_A->addPoint<0>(H, b, p,this);
 
-//    std::cout << ".................3........." << std::endl;
 
-    accSSE_top_A->stitchDouble(H,b,this,true, true);
-//#ifdef ROOTBA
-//        accSSE_top_A->stitchDouble_rootba(H_rootba,b_rootba,this,true, true);
-//#endif
+//    accSSE_top_A->stitchDouble(H,b,this,true, true);
+
 
     resInA = accSSE_top_A->nres[0];
 }
+#if 1
 void EnergyFunctional::accumulateSCF_MT(MatXX &H, VecX &b, bool MT)
 {
     accSSE_bot->setZero(nFrames);
     for(EFFrame* f : frames)
         for(EFPoint* p : f->points)
             accSSE_bot->addPoint(p);
-    accSSE_bot->stitchDouble(H, b,this);
+//    accSSE_bot->stitchDouble(H, b,this);
 }
+#endif
 //! resubstitute是输出，把后端的解输出到前端
 void EnergyFunctional::resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT)
 {
@@ -528,56 +520,44 @@ void EnergyFunctional::marginalizePointsF()
     VecX Mb, Mbsc;
 
 #ifdef ROOTBA
-    MatXX M_rootba;
-    VecX Mb_rootba;
+    MatXX M1;
+    VecX Mb1;
 #endif
     //! HM, bM是祖传的。这里M - Msc, Mb - Mbsc是本次新的增量，再加到祖传的HM，bM上。
 
 	accSSE_bot->setZero(nFrames);
 	accSSE_top_A->setZero(nFrames);
-//    M = MatXX::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
-//    Mb = VecX::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
-    for (int i = 0; i < 100; i++)
-        my_stack[i].clear();
-
-    for(EFPoint* p : allPointsToMarg) {
-//        accSSE_top_A->addPoint<2>(p, this, 0);
-        p->Hcd_accAF = VecCf::Zero();
-        p->Hdd_accAF = 0.0;
-        p->bd_accAF = 0.0;
-//        accSSE_bot->addPoint(p,false);
-//        removePoint(p);
-        for (EFResidual *r: p->residualsAll) {
-            my_stack[r->hostIDX + r->targetIDX * nFrames].push_back(r);
-//            r->point->Hdd_accAF = 0.0;
-//            r->point->bd_accAF = 0.0;
-//            r->point->Hcd_accAF = VecCf::Zero();
-        }
-    }
-
-    accSSE_top_A->my_addPoint<2>(this, 0);
+    M = MatXX::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
+    Mb = VecX::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
+    M1 = MatXX::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
+    Mb1 = VecX::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
+    Msc = MatXX::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
+    Mbsc = VecX::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
 
 	for(EFPoint* p : allPointsToMarg) {
-//		accSSE_top_A->addPoint<2>(M, Mb, p,this);
-		accSSE_bot->addPoint(p,false);
+//		accSSE_top_A->addPoint<2>(M, Mb, M1, Mb1, p,this);
+        accSSE_top_A->addPoint<2>(M, Mb, Msc, Mbsc, p,this);
+//		accSSE_bot->addPoint(p,false);
 		removePoint(p);
 	}
 
+#if 0
 	accSSE_top_A->stitchDouble(M,Mb,this,false,false);
 #ifdef ROOTBA
     accSSE_top_A->stitchDouble_rootba(M_rootba,Mb_rootba,this,false,false);
 #endif
+#endif
 
     // bot指的是從bot生成（舒爾補）對應的top
-	accSSE_bot->stitchDouble(Msc,Mbsc,this);
+//	accSSE_bot->stitchDouble(Msc,Mbsc,this);
 
 	resInM+= accSSE_top_A->nres[0];
 
 	MatXX H =  M-Msc;
     VecX b =  Mb-Mbsc;
 #ifdef ROOTBA
-    std::cout << "Mb - Mbsc: " << b.transpose() << std::endl;
-    std::cout << "Mb_rootba: " << Mb_rootba.transpose() << std::endl;
+//    std::cout << "Mbsc: " << Mbsc.transpose() << std::endl;
+//    std::cout << "Mb1:  " << Mb1.transpose() << std::endl;
 #endif
 
     // 每一个点都对应一个完整的H, b。或者说，Marg: point -> (H_nxn, b_n)
@@ -692,7 +672,7 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
     // 边缘化后的求解，三个元素。详见涂金戈。
     // A是不受边缘化影响的残差和雅克比， L是线性化的残差和雅克比，SCF是计算舒尔补
     // 不过其实一个已经线性化的残差都没有
-	accumulateAF_MT(HA_top, bA_top, multiThreading);
+	accumulateAF_MT(HA_top, bA_top, H_sc, b_sc, multiThreading);
 //    std::cout << "H: \n" << HA_top << std::endl;
 //    std::cout << "b: \n" << bA_top << std::endl;
 //    exit(1);
@@ -813,16 +793,16 @@ VecX EnergyFunctional::getStitchedDeltaF() const
 
 #ifdef ROOTBA
 
-
+#if 0
 void EnergyFunctional::test_QR_decomp()
 {
-    Eigen::Matrix<float, 8, 1> A;
-    A.setZero();
+    MatXXf A;
+    A.setZero(8, 1);
 
     A << 3.5, 0.0, 7.7, 0.0, 9.6, 10.1, 2.3, 0.0;
 
-    Mat88f Q;
-    Vec8f R;
+    MatXXf Q;
+    VecXf R;
 //    Mat88f Q_total = Mat88f::Identity();
 //    Vec8f A_orig = A;
 
@@ -861,6 +841,7 @@ void EnergyFunctional::test_QR_decomp()
             << Q_2 * Q_2.transpose() << std::endl;*/
 
 }
+#endif
 #endif
 
 

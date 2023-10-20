@@ -60,7 +60,7 @@ void AccumulatedSCHessianSSE::addPoint(EFPoint* p, int tid)
     // 原来HdiF即是协方差
 	p->HdiF = 1.0 / H;
 	p->bdSumF = p->bd_accAF;
-
+#if 0
 	VecCf Hcd = p->Hcd_accAF;
     //! L * w * R.t() => i X j => A
     //! acc<i><j> A += L * w * R.t()
@@ -118,6 +118,7 @@ void AccumulatedSCHessianSSE::addPoint(EFPoint* p, int tid)
         accEB[tid][r1ht].num++;
 #endif
 	}
+#endif
 }
 
 

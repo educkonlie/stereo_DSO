@@ -35,10 +35,23 @@ namespace dso
 {
     //   Top的addPoint和Bot的addPoint
 
-#if 0
+#if 1
+#ifndef FRAMES
+#define FRAMES (nframes[0])
+//#define FRAMES (8)
+#endif
 template<int mode>
-void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * const ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
+void AccumulatedTopHessianSSE::addPoint(MatXX &H, VecX &b,
+                                        MatXX &Hsc_rootba, VecX &bsc_rootba,
+                                        EFPoint* p, EnergyFunctional const * const ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
 {
+    MatXXf Jr1;
+    Jr1 = MatXXf::Zero(8 * FRAMES, CPARS + FRAMES * 8);
+    VecXf Jr2;
+    Jr2 = VecXf::Zero(8 * FRAMES);
+    VecXf Jl;
+    Jl  = VecXf::Zero(8 * FRAMES);
+//    = resApprox;
 	assert(mode==0 || mode==2);
 
 	VecCf dc = ef->cDeltaF;
@@ -49,6 +62,7 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 
     //! 对该点所有的残差计算相应的矩阵块。Top里的是该残差对应的C, xi部分的偏导，Sch里的是该残差对应的舒尔补
     int old_hostIdx = -1;
+    int k = 0;
 	for(EFResidual* r : p->residualsAll) {
 		if(mode==0) {
             assert(!r->isLinearized);
@@ -102,6 +116,7 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 
 
 #if 1
+#if 0
 //        std::cout << "point has " << p->residualsAll.size() << " residuals" << std::endl;
         Eigen::Matrix<float, 8, 13> Jr = Eigen::Matrix<float, 8, 13>::Zero();
         Jr.block<8, 4>(0, 0) = rJ->JIdx[0] * rJ->Jpdc[0].transpose()
@@ -112,49 +127,40 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
         Jr.block<8, 1>(0, 11) = rJ->JabF[1];
         Jr.block<8, 1>(0, 12) = resApprox;
         myH[htIDX] += Jr.transpose() * Jr;
+#endif
 
-#if 0
+#if 1
         Eigen::Matrix<float, 8, 8> J_th = Eigen::Matrix<float, 8, 8>::Zero();
         J_th.block<8, 6>(0, 0) = rJ->JIdx[0] * rJ->Jpdxi[0].transpose()
                                  + rJ->JIdx[1] * rJ->Jpdxi[1].transpose();
         J_th.block<8, 1>(0, 6) = rJ->JabF[0];
         J_th.block<8, 1>(0, 7) = rJ->JabF[1];
 
-        MatXXf Jr1;
-        Jr1 = MatXXf::Zero(8, CPARS + nframes[0] * 8);
-        Jr1.block<8, 4>(0, 0) = rJ->JIdx[0] * rJ->Jpdc[0].transpose()
-                                + rJ->JIdx[1] * rJ->Jpdc[1].transpose();
-        Jr1.block<8, 8>(0, r->hostIDX * 8 + 4) = J_th * ef->adHostF[htIDX].transpose();
-        Jr1.block<8, 8>(0, r->targetIDX * 8 + 4) = J_th * ef->adTargetF[htIDX].transpose();
+//        Jr1 = MatXXf::Zero(8, CPARS + nframes[0] * 8);
+        Jr1.block<8, 4>(k * 8, 0)
+                = rJ->JIdx[0] * rJ->Jpdc[0].transpose() + rJ->JIdx[1] * rJ->Jpdc[1].transpose();
 
-        Eigen::Matrix<float, 8, 1> Jr2 = resApprox;
+        Jr1.block<8, 8>(k * 8, r->hostIDX * 8 + 4)
+                = J_th * ef->adHostF[htIDX].transpose();
 
-        H += (Jr1.transpose() * Jr1).cast<double>();
-        b += (Jr1.transpose() * Jr2).cast<double>();
+        Jr1.block<8, 8>(k * 8, r->targetIDX * 8 + 4)
+                = J_th * ef->adTargetF[htIDX].transpose();
+
+
+//        Eigen::Matrix<float, 8, 1> Jr2 = resApprox;
+        Jr2.block<8, 1>(k * 8, 0) = resApprox;
+
+//        Eigen::Matrix<float, 8 * , 1> Jl = Eigen::Matrix<float, 8, 1>::Zero();
+        Jl.block<8, 1>(k * 8, 0) = rJ->JIdx[0] * rJ->Jpdd(0, 0)
+                               + rJ->JIdx[1] * rJ->Jpdd(1, 0);
+        //! 可以把窗口固定为8, 然后做成固定大小的矩阵，如果帧数小于8， 就用0填充
+
+//        H += (Jr1.transpose() * Jr1).cast<double>();
+//        b += (Jr1.transpose() * Jr2).cast<double>();
 #endif
 
-//        std::cout << "H:\n" << H << std::endl;
-//        std::cout << "b:\n" << b.transpose() << std::endl;
-
-//        std::cout << "point: " << p->idxInPoints << std::endl;
-//        std::cout << "host: " << r->hostIDX << " target: " << r->targetIDX << std::endl;
-//        std::cout << "Jr1:\n" << Jr1 << std::endl;
 #endif
 
-//        Eigen::Matrix<float, 8, 4> C = rJ->JIdx[0] * rJ->Jpdc[0].transpose()
-//                                       + rJ->JIdx[1] * rJ->Jpdc[1].transpose();
-//        Eigen::Matrix<float, 8, 6> Xi = rJ->JIdx[0] * rJ->Jpdxi[0].transpose()
-//                                        + rJ->JIdx[1] * rJ->Jpdxi[1].transpose();
-//        Eigen::Matrix<float, 8, 2> Jab = Eigen::Matrix<float, 8, 2>::Zero();
-//        Jab.block<8, 1>(0, 0) = rJ->JabF[0];
-//        Jab.block<8, 1>(0, 1) = rJ->JabF[1];
-//
-//        myH[htIDX].block<4, 4>(0, 0) += C.transpose() * C;
-//        myH[htIDX].block<6, 6>(4, 4) += Xi.transpose() * Xi;
-//        myH[htIDX].block<2, 2>(10, 10) += Jab.transpose() * Jab;
-//        myH[htIDX].block<1, 1>(12, 12) += resApprox.transpose() * resApprox;
-
-//        std::cout << "myH:\n" << myH[htIDX] << std::endl;
 
 #if 0
 		acc[tid][htIDX].update(
@@ -184,20 +190,71 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 		Hcd_acc += rJ->Jpdc[0]*Ji2_Jpdd[0] + rJ->Jpdc[1]*Ji2_Jpdd[1];
 
 		nres[tid]++;
+        k++;
+        assert(k <= FRAMES);
 	}
+//    std::cout << "Jr1:\n" << Jr1 << std::endl;
+//    std::cout << "Jr2:\n" << Jr2.transpose() << std::endl;
+#ifdef ROOTBA
+    MatXXf Q;
+    Q = MatXXf::Zero(8 * FRAMES,  8 * FRAMES);
 
+    VecXf Jl1 = VecXf::Zero(8 * FRAMES);
+    //! QR_decomp还只支持8行1列，要修改
+//    this->QR_decomp(Jl, Q, Jl1);
+//    VecXf R;
+//    R = VecXf::Zero(8 * FRAMES);
+    Eigen::HouseholderQR<VecXf > qr;
+    qr.compute(Jl);
+    Q = qr.householderQ();
+    Jl1 = qr.matrixQR().triangularView<Eigen::Upper>();
+
+//    std::cout << "Jl " << Jl.transpose() << std::endl;
+//    std::cout << "Jl1 " << Jl1.transpose() << std::endl;
+//    std::cout << std::endl;
+
+    MatXXf Q1;
+    Q1 = Q.col(0);
+//    std::cout << "Q1:\n" << Q1.transpose() << std::endl;
+
+    H += (Jr1.transpose() * Jr1).cast<double>();
+    b += (Jr1.transpose() * Jr2).cast<double>();
+
+    Hsc_rootba += (Jr1.transpose() * Q1 * Q1.transpose() * Jr1).cast<double>();
+    bsc_rootba += (Jr1.transpose() * Q1 * Q1.transpose() * Jr2).cast<double>();
+
+//    std::cout << "b:\n" << b.transpose() << std::endl;
+//    Eigen::Matrix<float, 8, 1> Q1 = Q.block<8, 1>(0, 0);
+/*
+    if (Jr.block<8, 12>(0, 0) == Eigen::Matrix<float, 8, 12>::Zero()) {
+        std::cout << "Q * Jl1:" << (Q * Jl1).transpose() << std::endl;
+        std::cout << "Jl:       " << Jl.transpose() << std::endl;
+        std::cout << std::endl;
+        std::cout << "H_rootba:\n" << Jr.transpose() * Q2 * Q2.transpose() * Jr << std::endl;
+        std::cout << "H:\n" << Jr.transpose() * Jr << std::endl;
+    }*/
+//                    std::cout << "I:\n" << Q1 * Q1.transpose() + Q2 * Q2.transpose() << std::endl;
+//        myH_rootba[htIDX] += Jr.transpose() * Q2 * Q2.transpose() * Jr;
+    //! 好像Jr.t * Q1 * Q1.t * Jr就是舒尔补部分
+    //! 我知道问题在哪里了，每个点的所有残差是互相关联的，或者说是一个整体。
+    //! 舒尔补的时候，会每个点的所有残差互乘，QR分解的时候，也是同一个点（同一列Jl）的所有givens rotation的
+    //! Q1矩阵连乘
+    //! 乘法即是关联的，加法才是可以并行化的
+    //! 所以还是要改回遍历point的模式，并且要直接对绝对位姿下进行求解
+#endif
     p->Hdd_accAF = Hdd_acc;
     p->bd_accAF = bd_acc;
     p->Hcd_accAF = Hcd_acc;
 }
 #endif
 #ifdef ROOTBA
-    void AccumulatedTopHessianSSE::QR_decomp(Vec8f A, Mat88f &Q, Vec8f &R)
+//    void AccumulatedTopHessianSSE::QR_decomp(Vec8f A, Mat88f &Q, Vec8f &R)
+    void AccumulatedTopHessianSSE::QR_decomp(VecXf A, MatXXf &Q, VecXf &R)
     {
         Q.setIdentity();
         R = A;
-        Mat88f Q1;
-        for (int i = 7; i >= 1; i--) {
+        MatXXf Q1;
+        for (int i = A.size(); i >= 1; i--) {
             float b = R(i);
             if (std::abs(b) < 0.00001)
                 continue;
@@ -219,7 +276,7 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
         }
     }
 #endif
-#ifdef ROOTBA_PREPARE
+#if 0
     template<int mode>
     void AccumulatedTopHessianSSE::my_addPoint(EnergyFunctional const * const ef,
                                                int tid)	// 0 = active, 1 = linearized, 2=marginalize
@@ -351,20 +408,27 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
             }
     }
 #endif
-#if 0
-template void AccumulatedTopHessianSSE::addPoint<0>(EFPoint* p, EnergyFunctional const * const ef, int tid);
-template void AccumulatedTopHessianSSE::addPoint<1>(EFPoint* p, EnergyFunctional const * const ef, int tid);
-template void AccumulatedTopHessianSSE::addPoint<2>(EFPoint* p, EnergyFunctional const * const ef, int tid);
+#if 1
+    template void AccumulatedTopHessianSSE::addPoint<0>
+            (MatXX &H, VecX &b,
+             MatXX &Hsc_rootba, VecX &bsc_rootba,
+             EFPoint* p, EnergyFunctional const * const ef, int tid);
+//template void AccumulatedTopHessianSSE::addPoint<1>(EFPoint* p, EnergyFunctional const * const ef, int tid);
+    template void AccumulatedTopHessianSSE::addPoint<2>
+            (MatXX &H, VecX &b,
+             MatXX &Hsc_rootba, VecX &bsc_rootba,
+             EFPoint* p, EnergyFunctional const * const ef, int tid);
 #endif
 
-template void AccumulatedTopHessianSSE::my_addPoint<0>(EnergyFunctional const * const ef, int tid);
-template void AccumulatedTopHessianSSE::my_addPoint<2>(EnergyFunctional const * const ef, int tid);
+//template void AccumulatedTopHessianSSE::my_addPoint<0>(EnergyFunctional const * const ef, int tid);
+//template void AccumulatedTopHessianSSE::my_addPoint<2>(EnergyFunctional const * const ef, int tid);
 
 void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional const * const EF, bool usePrior, bool useDelta, int tid)
 {
-    H = MatXX::Zero(nframes[tid]*8+CPARS, nframes[tid]*8+CPARS);
-	b = VecX::Zero(nframes[tid]*8+CPARS);
+//    H = MatXX::Zero(nframes[tid]*8+CPARS, nframes[tid]*8+CPARS);
+//	b = VecX::Zero(nframes[tid]*8+CPARS);
 
+#if 0
 	for(int h=0;h<nframes[tid];h++)
 		for(int t=0;t<nframes[tid];t++) {
             //! h:[0, nframes - 1], t:[0, nframes - 1]
@@ -416,6 +480,7 @@ void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional 
 			H.block<8,8>(tIdx, hIdx).noalias() = H.block<8,8>(hIdx, tIdx).transpose();
 		}
 	}
+#endif
 
 	if(usePrior) {
 		assert(useDelta);
@@ -429,7 +494,7 @@ void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional 
 
 }
 
-#ifdef ROOTBA
+#if 0
     void AccumulatedTopHessianSSE::stitchDouble_rootba(MatXX &H, VecX &b, EnergyFunctional const * const EF, bool usePrior, bool useDelta, int tid)
     {
         H = MatXX::Zero(nframes[tid]*8+CPARS, nframes[tid]*8+CPARS);
