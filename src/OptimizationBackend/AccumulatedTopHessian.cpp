@@ -174,18 +174,25 @@ void AccumulatedTopHessianSSE::addPoint(MatXX &H, VecX &b,
 //    std::cout << "Jr1:\n" << Jr1 << std::endl;
 //    std::cout << "Jr2:\n" << Jr2.transpose() << std::endl;
 #ifdef ROOTBA
-    MatXXf Q;
-    Q = MatXXf::Zero(8 * FRAMES,  8 * FRAMES);
 
-    VecXf Jl1 = VecXf::Zero(8 * FRAMES);
+//    rootBA::TicToc timer;
+//    ceres_problem.solve();
+//    auto ceres_time = timer.toc();
+//    std::cout << "<ceres> cost time " << ceres_time << std::endl;
+
+    MatXXf Q;
+//    Q = MatXXf::Zero(8 * FRAMES,  8 * FRAMES);
+
+//    VecXf Jl1 = VecXf::Zero(8 * FRAMES);
     //! QR_decomp还只支持8行1列，要修改
 //    this->QR_decomp(Jl, Q, Jl1);
 //    VecXf R;
 //    R = VecXf::Zero(8 * FRAMES);
+    TicToc timer_QR;
     Eigen::HouseholderQR<VecXf > qr;
     qr.compute(Jl);
     Q = qr.householderQ();
-    Jl1 = qr.matrixQR().triangularView<Eigen::Upper>();
+//    Jl1 = qr.matrixQR().triangularView<Eigen::Upper>();
 
 //    std::cout << "Jl " << Jl.transpose() << std::endl;
 //    std::cout << "Jl1 " << Jl1.transpose() << std::endl;
@@ -194,12 +201,33 @@ void AccumulatedTopHessianSSE::addPoint(MatXX &H, VecX &b,
     MatXXf Q1;
     Q1 = Q.col(0);
 //    std::cout << "Q1:\n" << Q1.transpose() << std::endl;
+    auto times_QR = timer_QR.toc();
+    std::cout << "QR cost time " << times_QR << std::endl;
+
+    TicToc timer_HTop;
 
     H += (Jr1.transpose() * Jr1).cast<double>();
     b += (Jr1.transpose() * Jr2).cast<double>();
 
-    Hsc_rootba += (Jr1.transpose() * Q1 * Q1.transpose() * Jr1).cast<double>();
-    bsc_rootba += (Jr1.transpose() * Q1 * Q1.transpose() * Jr2).cast<double>();
+    auto times_HTop = timer_HTop.toc();
+    std::cout << "HTop cost time " << times_HTop << std::endl;
+
+    //! Q1可以把Jr1变成单行向量，有望实现一种快速的Hsc, bsc生成方法
+    //! 结合DSO原生的TopAcc，也许可以实现一种更快速的方法
+//    std::cout << "Q1^T * Jr1:\n" << Q1.transpose() * Jr1 << std::endl;
+
+    TicToc timer_SC;
+
+    MatXXf a1 = Q1.transpose() * Jr1;
+    MatXXf b1 = Q1.transpose() * Jr2;
+
+    Hsc_rootba += (a1.transpose() * a1).cast<double>();
+    bsc_rootba += (a1.transpose() * b1).cast<double>();
+
+    auto times_SC = timer_SC.toc();
+    std::cout << "SC cost time " << times_SC << std::endl;
+//    Hsc_rootba += (Jr1.transpose() * Q1 * Q1.transpose() * Jr1).cast<double>();
+//    bsc_rootba += (Jr1.transpose() * Q1 * Q1.transpose() * Jr2).cast<double>();
 
 //    std::cout << "b:\n" << b.transpose() << std::endl;
 //    Eigen::Matrix<float, 8, 1> Q1 = Q.block<8, 1>(0, 0);
