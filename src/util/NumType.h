@@ -62,6 +62,8 @@ typedef Sophus::SO3d SO3;
 #define ROOTBA
 #define ROOTBA_PREPARE
 
+//#define USE_MYH
+
 //#define USE_ACC_INSTEAD_OF_myH
 
 typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatXX;

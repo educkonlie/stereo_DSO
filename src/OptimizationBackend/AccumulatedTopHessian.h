@@ -88,30 +88,17 @@ public:
 	void stitchDouble(MatXX &H, VecX &b, EnergyFunctional const * const EF,
                       bool usePrior, bool useDelta, int tid=0);
 
-#ifdef ROOTBA
-        void stitchDouble_rootba(MatXX &H, VecX &b, EnergyFunctional const * const EF,
-                          bool usePrior, bool useDelta, int tid=0);
-        void QR_decomp(VecXf A, MatXXf &Q, VecXf &R);
-#endif
 
 #if 1
-	template<int mode> void addPoint(MatXX &H, VecX &b,
-                                     MatXX &H1, VecX &b1,
-                                     EFPoint* p, EnergyFunctional const * const ef, int tid=0);
+	template<int mode> void addPoint(EFPoint* p, EnergyFunctional const * const ef, int tid=0);
 #endif
-#if 0
-    template<int mode> void my_addPoint(EnergyFunctional const * const ef,
-                                               int tid=0);
-#endif
+
 	int nframes[NUM_THREADS];
 	EIGEN_ALIGN16 AccumulatorApprox* acc[NUM_THREADS];
 	int nres[NUM_THREADS];
 
     Mat1313f *myH;
     Mat1313f *myH_rootba;
-
-//    MatXX *my_big_H;
-//    VecX *my_big_b;
 
 private:
 

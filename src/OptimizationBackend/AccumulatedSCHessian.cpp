@@ -60,7 +60,7 @@ void AccumulatedSCHessianSSE::addPoint(EFPoint* p, int tid)
     // 原来HdiF即是协方差
 	p->HdiF = 1.0 / H;
 	p->bdSumF = p->bd_accAF;
-#ifndef ROOTBA
+
 	VecCf Hcd = p->Hcd_accAF;
     //! L * w * R.t() => i X j => A
     //! acc<i><j> A += L * w * R.t()
@@ -118,15 +118,11 @@ void AccumulatedSCHessianSSE::addPoint(EFPoint* p, int tid)
         accEB[tid][r1ht].num++;
 #endif
 	}
-#endif
 }
 
 
 void AccumulatedSCHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional const * const EF, int tid)
 {
-#ifdef ROOTBA
-    return;
-#endif
 	int nf = nframes[0];
 	int nframes2 = nf*nf;
 

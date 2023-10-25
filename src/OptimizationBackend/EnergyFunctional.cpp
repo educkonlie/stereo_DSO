@@ -188,40 +188,37 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
 }
 
 // accumulates & shifts L.
-void EnergyFunctional::accumulateAF_MT(MatXX &H, VecX &b, MatXX &H1, VecX &b1, bool MT)
+void EnergyFunctional::accumulateAF_MT(MatXX &H, VecX &b, bool MT)
 {
     accSSE_top_A->setZero(nFrames);
 
-//    std::cout << ".................1........." << std::endl;
-    H = MatXX::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
-    b = VecX::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
 
-        H1 = MatXX::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
-        b1 = VecX::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
-
-//    std::cout << ".................2........." << std::endl;
-//        for (int i = 0; i < 100; i++)
-//            my_stack[i].clear();
-
+//        TicToc timer_addPoint;
         for (EFFrame *f : frames)
             for (EFPoint *p : f->points) {
-                accSSE_top_A->addPoint<0>(H, b, H1, b1, p, this, 0);
+                accSSE_top_A->addPoint<0>(p, this, 0);
             }
+//        auto times_addPoint = timer_addPoint.toc();
+//        std::cout << "addPoint cost time " << times_addPoint << std::endl;
 
-
-    accSSE_top_A->stitchDouble(H,b,this,true, true);
-
+//        TicToc timer_stitchDouble;
+        accSSE_top_A->stitchDouble(H,b,this,true, true);
+//        auto times_stitchDouble = timer_stitchDouble.toc();
+//        std::cout << "stitchDouble cost time " << times_stitchDouble << std::endl;
 
     resInA = accSSE_top_A->nres[0];
 }
 #if 1
 void EnergyFunctional::accumulateSCF_MT(MatXX &H, VecX &b, bool MT)
 {
+//    TicToc timer_SCF;
     accSSE_bot->setZero(nFrames);
     for(EFFrame* f : frames)
         for(EFPoint* p : f->points)
             accSSE_bot->addPoint(p);
     accSSE_bot->stitchDouble(H, b,this);
+//    auto times_SCF = timer_SCF.toc();
+//    std::cout << "SCF cost time " << times_SCF << std::endl;
 }
 #endif
 //! resubstitute是输出，把后端的解输出到前端
@@ -527,20 +524,9 @@ void EnergyFunctional::marginalizePointsF()
 
 	accSSE_bot->setZero(nFrames);
 	accSSE_top_A->setZero(nFrames);
-    M = MatXX::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
-    Mb = VecX::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
-    M1 = MatXX::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
-    Mb1 = VecX::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
-    Msc = MatXX::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
-    Mbsc = VecX::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
 
 	for(EFPoint* p : allPointsToMarg) {
-//		accSSE_top_A->addPoint<2>(M, Mb, M1, Mb1, p,this);
-#ifndef ROOTBA
-        accSSE_top_A->addPoint<2>(M, Mb, M1, Mb1, p,this);
-#else
-        accSSE_top_A->addPoint<2>(M, Mb, Msc, Mbsc, p,this);
-#endif
+        accSSE_top_A->addPoint<2>(p,this);
 		accSSE_bot->addPoint(p,false);
 		removePoint(p);
 	}
@@ -554,10 +540,6 @@ void EnergyFunctional::marginalizePointsF()
 
 	MatXX H =  M-Msc;
     VecX b =  Mb-Mbsc;
-#ifdef ROOTBA
-//    std::cout << "Mbsc: " << Mbsc.transpose() << std::endl;
-//    std::cout << "Mb1:  " << Mb1.transpose() << std::endl;
-#endif
 
     // 每一个点都对应一个完整的H, b。或者说，Marg: point -> (H_nxn, b_n)
 	HM += setting_margWeightFac*H;
@@ -653,6 +635,10 @@ void EnergyFunctional::orthogonalize(VecX* b, MatXX* H)
 
 void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* HCalib)
 {
+
+
+    TicToc timer_solveSystemF;
+
 	if(setting_solverMode & SOLVER_USE_GN) lambda=0;
 	if(setting_solverMode & SOLVER_FIX_LAMBDA) lambda = 1e-5;
 
@@ -671,19 +657,19 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
     // 边缘化后的求解，三个元素。详见涂金戈。
     // A是不受边缘化影响的残差和雅克比， L是线性化的残差和雅克比，SCF是计算舒尔补
     // 不过其实一个已经线性化的残差都没有
-#ifdef ROOTBA
-	accumulateAF_MT(HA_top, bA_top, H_sc, b_sc, multiThreading);
-#else
-    accumulateAF_MT(HA_top, bA_top, H1, b1, multiThreading);
-#endif
-//    std::cout << "H: \n" << HA_top << std::endl;
-//    std::cout << "b: \n" << bA_top << std::endl;
-//    exit(1);
+
+//    TicToc timer_AF;
+    accumulateAF_MT(HA_top, bA_top, multiThreading);
+//    auto times_AF = timer_AF.toc();
+//    std::cout << "AF cost time " << times_AF << std::endl;
+
 //  跟上次邊緣化的幀無關的points們，加上新補增的points們，計算最新的殘差，SC掉points，生成最新的H, b系統
+//    TicToc timer_SCF;
 	accumulateSCF_MT(H_sc, b_sc,multiThreading);
+//    auto times_SCF = timer_SCF.toc();
+//    std::cout << "SCF cost time " << times_SCF << std::endl;
 
 //    std::cout << "b_sc:\n" << b_sc.transpose() << std::endl;
-//    std::cout << "b1  :\n" << b1.transpose() << std::endl;
 //    std::cout << std::endl;
 
     //! 这里的关键是zero点，也就是固定线性化点，之前制作HM, bM的时候，在固定线性化点做了一次优化，然后再回退，
@@ -716,12 +702,9 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //        std::cout << "H:\n" << HFinal_top << std::endl;
 //        std::cout << "b:\n" << bFinal_top << std::endl;
 	}
-#ifdef ROOTBA
-//    HFinal_top =  HM + HA_top - H_sc;
-//    bFinal_top =  bM_top + bA_top - b_sc;
-#endif
-
 //    exit(1);
+    auto times_solveSystemF = timer_solveSystemF.toc();
+    std::cout << "solveSystemF cost time " << times_solveSystemF << std::endl;
 
 	VecX x;
 
@@ -768,6 +751,8 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 
 	//resubstituteF(x, HCalib);
 	resubstituteF_MT(x, HCalib,multiThreading);
+
+
 }
 void EnergyFunctional::makeIDX()
 {
@@ -800,59 +785,6 @@ VecX EnergyFunctional::getStitchedDeltaF() const
         d.segment<8>(CPARS+8*h) = frames[h]->delta;
 	return d;
 }
-
-#ifdef ROOTBA
-
-#if 0
-void EnergyFunctional::test_QR_decomp()
-{
-    MatXXf A;
-    A.setZero(8, 1);
-
-    A << 3.5, 0.0, 7.7, 0.0, 9.6, 10.1, 2.3, 0.0;
-
-    MatXXf Q;
-    VecXf R;
-//    Mat88f Q_total = Mat88f::Identity();
-//    Vec8f A_orig = A;
-
-//    Eigen::Matrix<float, 8, 3> R;
-//    Eigen::HouseholderQR<Eigen::Matrix<float, 8, 3> > qr;
-//    qr.compute(A);
-//    Q = qr.householderQ();
-//    R = qr.matrixQR().triangularView<Eigen::Upper>();
-
-    accSSE_top_A->QR_decomp(A, Q, R);
-
-    std::cout << "R:\n" << R.transpose() << std::endl;
-    std::cout << "A:\n" << A.transpose() << std::endl;
-    std::cout << "Qt:\n" << Q.transpose() << std::endl;
-    std::cout << "Q * R:\n" << (Q * R).transpose() << std::endl;
-    std::cout << "Qt * A:\n" << (Q.transpose() * A).transpose() << std::endl;
-/*
-    for (int j = 7; j >= 1; j--) {
-        printf("[%d] [%d]\n", j - 1, j);
-        this->QR_decomp(A, j - 1, j, Q, R);
-        std::cout << "A:    " << A.transpose() << std::endl;
-        std::cout << "R:    " << R.transpose() << std::endl;
-        std::cout << "QR:   " << (Q * R).transpose() << std::endl;
-        Q_total = Q_total * Q;
-        std::cout << std::endl;
-        A = R;
-    }
-    std::cout << " finally R:    " << R.transpose() << std::endl;
-    std::cout << " original A:    " << A_orig.transpose() << std::endl;
-    std::cout << " finally A:    " << (Q_total * R).transpose() << std::endl;
-    std::cout << " finally Qt * A:    " << (Q_total.transpose() * A_orig).transpose() << std::endl;
-
-    std::cout << "Q_total:" << std::endl << Q_total << std::endl;
-    Eigen::Matrix<float, 8, 7> Q_2 = Q_total.block<8, 7>(0, 1);
-    std::cout << "Q_2 * Q_2_T:" << std::endl
-            << Q_2 * Q_2.transpose() << std::endl;*/
-
-}
-#endif
-#endif
 
 
 }
