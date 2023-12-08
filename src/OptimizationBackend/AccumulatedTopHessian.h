@@ -70,9 +70,9 @@ public:
 			if(acc[tid] != 0) delete[] acc[tid];
             acc[tid] = new AccumulatorApprox[nFrames*nFrames];
             if(myH != 0) delete[] myH;
-            myH = new Mat1313f[nFrames * nFrames];
+            myH = new MatPCPCf[nFrames * nFrames];
             if(myH_rootba != 0) delete[] myH_rootba;
-            myH_rootba = new Mat1313f[nFrames * nFrames];
+            myH_rootba = new MatPCPCf[nFrames * nFrames];
 		}
 
 		for(int i=0;i<nFrames*nFrames;i++) {
@@ -97,8 +97,8 @@ public:
 	EIGEN_ALIGN16 AccumulatorApprox* acc[NUM_THREADS];
 	int nres[NUM_THREADS];
 
-    Mat1313f *myH;
-    Mat1313f *myH_rootba;
+    MatPCPCf *myH;
+    MatPCPCf *myH_rootba;
 
 private:
 

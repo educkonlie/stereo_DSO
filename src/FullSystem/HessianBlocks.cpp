@@ -182,27 +182,13 @@ void FrameFramePrecalc::set(FrameHessian* host, FrameHessian* target, CalibHessi
 
 	SE3 leftToLeft_0 = target->get_worldToCam_evalPT() * host->get_worldToCam_evalPT().inverse();
 
-    SE3 leftToRight_0 = stereo_warp_Rt *
-            target->get_worldToCam_evalPT() * host->get_worldToCam_evalPT().inverse();
-
 	PRE_RTll_0 = (leftToLeft_0.rotationMatrix()).cast<float>();
-
-    PRE_RTlr_0 = (leftToRight_0.rotationMatrix()).cast<float>();
-
 	PRE_tTll_0 = (leftToLeft_0.translation()).cast<float>();
 
-    PRE_tTlr_0 = (leftToRight_0.translation()).cast<float>();
-
 	SE3 leftToLeft = target->PRE_worldToCam * host->PRE_camToWorld;
-    SE3 leftToRight = stereo_warp_Rt * target->PRE_worldToCam * host->PRE_camToWorld;
 
 	PRE_RTll = (leftToLeft.rotationMatrix()).cast<float>();
-
-    PRE_RTlr = (leftToLeft.rotationMatrix()).cast<float>();
-
 	PRE_tTll = (leftToLeft.translation()).cast<float>();
-
-    PRE_tTlr = (leftToLeft.translation()).cast<float>();
 
 	distanceLL = leftToLeft.translation().norm();
 
@@ -213,16 +199,8 @@ void FrameFramePrecalc::set(FrameHessian* host, FrameHessian* target, CalibHessi
 	K(1,2) = HCalib->cyl();
 	K(2,2) = 1;
 	PRE_KRKiTll = K * PRE_RTll * K.inverse();
-
-    PRE_KRKiTlr = K * PRE_RTlr * K.inverse();
-
 	PRE_RKiTll = PRE_RTll * K.inverse();
-
-    PRE_RKiTlr = PRE_RTlr * K.inverse();
-
 	PRE_KtTll = K * PRE_tTll;
-
-    PRE_KtTlr = K * PRE_tTlr;
 
 	PRE_aff_mode = AffLight::fromToVecExposure(host->ab_exposure,
                                                target->ab_exposure,

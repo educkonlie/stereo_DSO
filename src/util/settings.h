@@ -181,6 +181,9 @@ extern int staticPatternNum[10];
 extern int staticPatternPadding[10];
 
 extern double baseline;
+extern int baseline_is_small;
+extern int baseline_is_large;
+extern int baseline_is_right;
 extern std::string gt_path;
 extern std::vector<SE3> gt_pose;
 

@@ -776,6 +776,7 @@ void FullSystem::activatePointsMT()
 	else
 		activatePointsMT_Reductor(&optimized, &toOptimize, 0, toOptimize.size(), 0, 0);
 
+    int insert_count = 0;
 // 	LOG(INFO)<<"toOptimize.size(): "<<toOptimize.size();
 	for(unsigned k = 0;k < toOptimize.size();k++) {
 		PointHessian* newpoint = optimized[k];
@@ -785,6 +786,7 @@ void FullSystem::activatePointsMT()
 			newpoint->host->immaturePoints[ph->idxInImmaturePoints]=0;
 			newpoint->host->pointHessians.push_back(newpoint);
 			ef->insertPoint(newpoint);
+            insert_count++;
 			for(PointFrameResidual* r : newpoint->residuals)
 				ef->insertResidual(r);
 			assert(newpoint->efPoint != 0);
@@ -796,6 +798,8 @@ void FullSystem::activatePointsMT()
 			assert(newpoint == 0 || newpoint == (PointHessian*)((long)(-1)));
 		}
 	}
+
+    std::cout << "insert points: " << insert_count << std::endl;
 
     // 整理fh->immaturePoints隊列
 	for(FrameHessian* host : frameHessians) {
@@ -1270,6 +1274,7 @@ void FullSystem::makeKeyFrame( FrameHessian* fh)
 
     // 它可能只是在制作H, b，最终在优化中是被边缘化的，并不会实际计算
 	activatePointsMT();
+//    std::cout << "npoints: " << ef->nPoints << std::endl;
 	ef->makeIDX();
 
 	// =========================== OPTIMIZE ALL =========================

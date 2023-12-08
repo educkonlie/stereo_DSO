@@ -40,6 +40,14 @@ namespace dso
 #define FRAMES (nframes[0])
 //#define FRAMES (8)
 #endif
+TicToc timer_ACC1;
+double times_ACC1 = 0.0;
+TicToc timer_ACC2;
+double times_ACC2 = 0.0;
+TicToc timer_ACC3;
+double times_ACC3 = 0.0;
+TicToc timer_ACC4;
+double times_ACC4 = 0.0;
 template<int mode>
 void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * const ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
 {
@@ -86,6 +94,7 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 			rr += resApprox[i]*resApprox[i];
 		}
 #ifdef USE_MYH
+        timer_ACC1.tic();
         //! 打印host, target, C, xi, ab
 //        std::cout << "C:\n" << rJ->JIdx[0] * rJ->Jpdc[0].transpose() +
 //                rJ->JIdx[1] * rJ->Jpdc[1].transpose() << std::endl;
@@ -96,17 +105,19 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 //        std::cout << "res: \n" << resApprox.transpose() << std::endl;
 //        std::cout << std::endl;
         //! 上面的是重投影误差的偏导，另外还要有8×2的矩阵JIdx，即8维的residual和x, y的偏导
-        Eigen::Matrix<float, 8, 13> J_th = Eigen::Matrix<float, 8, 13>::Zero();
-        J_th.block<8, 4>(0, 0) = rJ->JIdx[0] * rJ->Jpdc[0].transpose() +
+        Eigen::Matrix<float, 8, 8 + 1 + CPARS> J_th = Eigen::Matrix<float, 8, 8 + 1 + CPARS>::Zero();
+        J_th.block<8, CPARS>(0, 0) = rJ->JIdx[0] * rJ->Jpdc[0].transpose() +
                 rJ->JIdx[1] * rJ->Jpdc[1].transpose();
-        J_th.block<8, 6>(0, 4) = rJ->JIdx[0] * rJ->Jpdxi[0].transpose() +
+        J_th.block<8, 6>(0, CPARS) = rJ->JIdx[0] * rJ->Jpdxi[0].transpose() +
                 rJ->JIdx[1] * rJ->Jpdxi[1].transpose();
-        J_th.block<8, 1>(0, 10) = rJ->JabF[0];
-        J_th.block<8, 1>(0, 11) = rJ->JabF[1];
-        J_th.block<8, 1>(0, 12) = resApprox;
+        J_th.block<8, 1>(0, CPARS + 6) = rJ->JabF[0];
+        J_th.block<8, 1>(0, CPARS + 7) = rJ->JabF[1];
+        J_th.block<8, 1>(0, CPARS + 8) = resApprox;
 
         this->myH[htIDX] += J_th.transpose() * J_th;
+        times_ACC1 += timer_ACC1.toc();
 #else
+        timer_ACC1.tic();
         acc[tid][htIDX].update(
 				rJ->Jpdc[0].data(), rJ->Jpdxi[0].data(),
 				rJ->Jpdc[1].data(), rJ->Jpdxi[1].data(),
@@ -123,6 +134,7 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
 				rJ->JabJIdx(0,0), rJ->JabJIdx(0,1),
 				rJ->JabJIdx(1,0), rJ->JabJIdx(1,1),
 				JI_r[0], JI_r[1]);
+        times_ACC1 += timer_ACC1.toc();
 #endif
 
 //        acc[tid][htIDX].finish();
@@ -141,6 +153,10 @@ void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional const * con
     p->Hdd_accAF = Hdd_acc;
     p->bd_accAF = bd_acc;
     p->Hcd_accAF = Hcd_acc;
+
+//    std::cout << "p->Hcd_accAF: " << Hcd_acc.transpose() << std::endl;
+
+//    std::cout << "times_ACC1: " << times_ACC1 << std::endl;
 }
 #endif
 
@@ -154,6 +170,8 @@ void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional 
 {
     H = MatXX::Zero(nframes[tid]*8+CPARS, nframes[tid]*8+CPARS);
 	b = VecX::Zero(nframes[tid]*8+CPARS);
+
+//    std::cout << "nframes: " << nframes[tid] << std::endl;
 
 	for(int h=0;h<nframes[tid];h++)
 		for(int t=0;t<nframes[tid];t++) {

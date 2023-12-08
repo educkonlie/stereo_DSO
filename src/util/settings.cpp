@@ -191,6 +191,9 @@ double makeNonKeyFrame_total_time = 0.0;
 int num_kf = 0;
 
 double baseline = 0;
+int baseline_is_small = 0;
+int baseline_is_large = 0;
+int baseline_is_right = 0;
 std::string gt_path = "";
 std::vector<SE3> gt_pose;
 

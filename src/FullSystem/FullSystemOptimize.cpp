@@ -211,6 +211,10 @@ bool FullSystem::doStepFromBackup(float stepfacC,float stepfacT,float stepfacR,f
 		}
 	} else*/
     {
+        //! 修改内参K
+//        std::cout << "stepfacC: " << stepfacC << std::endl;
+//        std::cout << "Hcalib.step: " << Hcalib.step.transpose() << std::endl;
+//        std::cout << "Hcalib.value_backup: " << Hcalib.value_backup.transpose() << std::endl;
 		Hcalib.setValue(Hcalib.value_backup + stepfacC*Hcalib.step);
 		for(FrameHessian* fh : frameHessians) {
 			fh->setState(fh->state_backup + pstepfac.cwiseProduct(fh->step));
@@ -336,6 +340,9 @@ float FullSystem::optimize(int mnumOptIts)
 	if(frameHessians.size() < 3) mnumOptIts = 20; // size == 2
 	else if(frameHessians.size() < 4) mnumOptIts = 15; // size == 3
 
+#ifdef RKF_BASELINE
+    std::cout << "baseline old vs new: " << baseline << " " << this->Hcalib.my_baselinel() << std::endl;
+#endif
 	// get statistics and active residuals.
 // 	LOG(INFO)<<"frameHessians.size(): "<<frameHessians.size();
 	activeResiduals.clear();

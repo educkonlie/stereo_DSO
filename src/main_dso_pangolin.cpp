@@ -108,23 +108,25 @@ void settingsDefault(int preset)
 		playbackSpeed = (preset==0 ? 0 : 1);
 		preload = preset==1;
         // 可以修改
-		setting_desiredImmatureDensity = 1500;
+//		setting_desiredImmatureDensity = 1500;
 //        setting_desiredImmatureDensity = 4500;
-//        setting_desiredImmatureDensity = 9000;
+        setting_desiredImmatureDensity = 9000;
 
-		setting_desiredPointDensity = 2000;
+//		setting_desiredPointDensity = 2000;
 //        setting_desiredPointDensity = 6000;
-//        setting_desiredPointDensity = 12000;
+        setting_desiredPointDensity = 12000;
 
-		setting_minFrames = 5;
+//		setting_minFrames = 5;
 //        setting_minFrames = 3;
 //        setting_minFrames = 10;
 //        setting_minFrames = 15;
+        setting_minFrames = 4000;
 
-		setting_maxFrames = 7;
+//		setting_maxFrames = 7;
 //        setting_maxFrames = 4;
 //        setting_maxFrames = 14;
 //        setting_maxFrames = 21;
+        setting_maxFrames = 10000;
 
 		setting_maxOptIterations=6;
 		setting_minOptIterations=1;
@@ -519,7 +521,7 @@ int main( int argc, char** argv )
         struct timeval tv_end;
         gettimeofday(&tv_end, NULL);
 
-        fullSystem->printResult("/home/ruankefeng/stereo_DSO/result.txt");
+        fullSystem->printResult("/mnt/data/2/result.txt");
 
         int numFramesProcessed = abs(idsToPlay[0]-idsToPlay.back());
         double numSecondsProcessed = fabs(reader->getTimestamp(idsToPlay[0])-reader->getTimestamp(idsToPlay.back()));
@@ -538,6 +540,10 @@ int main( int argc, char** argv )
         std::cout << "num of keyframes created " << num_kf << std::endl;
         std::cout << "setting_kfGlobalWeight: " << setting_kfGlobalWeight << std::endl;
         std::cout << "keyframes ratio: " << (num_kf * 1.0) / numFramesProcessed << std::endl;
+
+        std::cout << "baseline is small " << baseline_is_small << std::endl;
+        std::cout << "baseline is large " << baseline_is_large << std::endl;
+        std::cout << "baseline is right " << baseline_is_right << std::endl;
 
         printf("\n======================"
                 "\n%d Frames (%.1f fps)"

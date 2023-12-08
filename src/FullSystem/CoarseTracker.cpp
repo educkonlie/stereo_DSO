@@ -191,13 +191,13 @@ void CoarseTracker::makeCoarseDepthL0(std::vector<FrameHessian*> frameHessians,
         // 但这里又将左图得到的idepth变为(idepth_min, idepth_max)，分别为idepth * 0.1, idepth * 1.9
         // 然后根据右图确定深度值
 
-        // 1這裏的收斂過程，在trace(maturelize)的時候對idepth_min idepth_max已經做過了
-        // 是因爲optimize後，幀間的位姿改變了，所以才會有重新stereo的需求
+        // TRACE_STEREO_AGAIN這裏的收斂過程，在trace(maturelize)的時候對idepth_min idepth_max已經做過了
+        // 是因爲optimize後，幀間的位姿改變了，所以才會有重新stereo的需求（优化的时候也会根据新的内参优化逆深度的）
 
         // 根本原因是優化的時候，參考幀的右目還沒有加入，參考幀右目無法加入的原因是host爲參考幀的未成熟點尚不存在
         // 所以才會有dso-lite對於這方面的改造
 
-#if 1
+#ifdef TRACE_STEREO_AGAIN
         for (FrameHessian *fh: frameHessians) {
             for (PointHessian *ph: fh->pointHessians) {
                 if (ph->lastResiduals[0].first != 0 && ph->lastResiduals[0].second == ResState::IN) {

@@ -62,9 +62,10 @@ EIGEN_STRONG_INLINE bool projectPoint(
 		float &drescale, float &u, float &v,
 		float &Ku, float &Kv, Vec3f &KliP, float &new_idepth)
 {
+    // fxli = 1.0 / fxl
 	KliP = Vec3f(
-			(u_pt+dx-HCalib->cxl())*HCalib->fxli(),
-			(v_pt+dy-HCalib->cyl())*HCalib->fyli(),
+			(u_pt + dx -HCalib->cxl())*HCalib->fxli(),
+			(v_pt + dy -HCalib->cyl())*HCalib->fyli(),
 			1);
 
 	Vec3f ptp = R * KliP + t*idepth;

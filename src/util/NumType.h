@@ -54,12 +54,13 @@ typedef Sophus::Sim3d Sim3;
 typedef Sophus::SO3d SO3;
 //#define RKF_BASELINE
 #ifdef RKF_BASELINE
-#define CPARS 5    // 似乎是相机内参
+#define CPARS 8    // 似乎是相机内参
 #else
 #define CPARS 4    // 似乎是相机内参
 #endif
+#define TRACE_STEREO_AGAIN
 
-#define ROOTBA
+//#define ROOTBA
 #define ROOTBA_PREPARE
 
 //#define USE_MYH
@@ -198,7 +199,7 @@ struct AffLight {
 
 class TicToc {
     public:
-        TicToc() {tic();}
+        TicToc() {/*tic();*/}
 
         void tic() {start = std::chrono::system_clock::now();}
 

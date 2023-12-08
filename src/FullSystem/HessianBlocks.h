@@ -314,7 +314,7 @@ struct CalibHessian {
 		initial_value[2] = cxG[0];
 		initial_value[3] = cyG[0];
 #ifdef RKF_BASELINE
-        initial_value[4] = 0.53717;
+        initial_value[4] = baseline;
 #endif
 
 		setValueScaled(initial_value);
@@ -337,6 +337,8 @@ struct CalibHessian {
     inline float& cxli() {return value_scaledi[2];}
     inline float& cyli() {return value_scaledi[3];}
 
+    inline float& my_baselinel() {return value_scaledf[4];}
+
 	inline void setValue(const VecC &value)
 	{
 		// [0-3: Kl, 4-7: Kr, 8-12: l2r]
@@ -346,7 +348,7 @@ struct CalibHessian {
 		value_scaled[2] = SCALE_C * value[2];
 		value_scaled[3] = SCALE_C * value[3];
 #ifdef  RKF_BASELINE
-        value_scaled[4] = SCALE_F * value[4];
+        value_scaled[4] = 1.0 * value[4];
 #endif
 
 		this->value_scaledf = this->value_scaled.cast<float>();
@@ -355,23 +357,25 @@ struct CalibHessian {
 		this->value_scaledi[2] = - this->value_scaledf[2] / this->value_scaledf[0];
 		this->value_scaledi[3] = - this->value_scaledf[3] / this->value_scaledf[1];
 #ifdef RKF_BASELINE
-        this->value_scaledi[4] = this->value_scaledf[4];
+        this->value_scaledi[4] = 1.0/ this->value_scaledf[4];
 #endif
 		this->value_minus_value_zero = this->value - this->value_zero;
+
+//        std::cout << "set value (every iter): " << this->value_scaled.transpose() << std::endl;
 	};
 
 	inline void setValueScaled(const VecC &value_scaled)
 	{
 		this->value_scaled = value_scaled;
+//        this->value_scaled(0) = 711.03;
 		this->value_scaledf = this->value_scaled.cast<float>();
 		value[0] = SCALE_F_INVERSE * value_scaled[0];
 		value[1] = SCALE_F_INVERSE * value_scaled[1];
 		value[2] = SCALE_C_INVERSE * value_scaled[2];
 		value[3] = SCALE_C_INVERSE * value_scaled[3];
 #ifdef RKF_BASELINE
-        value[4] = SCALE_F_INVERSE * value_scaled[4];
+        value[4] = 1.0 * value_scaled[4];
 #endif
-
 		this->value_minus_value_zero = this->value - this->value_zero;
 		this->value_scaledi[0] = 1.0f / this->value_scaledf[0];
 		this->value_scaledi[1] = 1.0f / this->value_scaledf[1];
@@ -380,6 +384,8 @@ struct CalibHessian {
 #ifdef RKF_BASELINE
         this->value_scaledi[4] = this->value_scaledf[4];
 #endif
+        //! 只在程序开始时运行一次
+        std::cout << "set value scaled (only in init): " << this->value_scaled.transpose() << std::endl;
 	};
 
 

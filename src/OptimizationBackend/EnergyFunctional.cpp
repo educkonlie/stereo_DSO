@@ -387,6 +387,8 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 	assert(EFIndicesValid);
 
 	assert((int)fh->points.size()==0);
+
+    std::cout << "marg frame: " << fh->frameID << std::endl;
 	int ndim = nFrames*8+CPARS-8;// new dimension
 	int odim = nFrames*8+CPARS;// old dimension
 
@@ -511,6 +513,7 @@ void EnergyFunctional::marginalizePointsF()
 			}
 		}
 	}
+    std::cout << "marg points: " << allPointsToMarg.size() <<  std::endl;
 // 	LOG(INFO)<<"allPointsToMarg.size(): "<<allPointsToMarg.size();
 
     MatXX M, Msc;
@@ -554,15 +557,18 @@ void EnergyFunctional::marginalizePointsF()
 
 void EnergyFunctional::dropPointsF()
 {
+    int count = 0;
 	for(EFFrame* f : frames) {
 		for(int i=0;i<(int)f->points.size();i++) {
 			EFPoint* p = f->points[i];
 			if(p->stateFlag == EFPointStatus::PS_DROP) {
 				removePoint(p);
 				i--;
+                count++;
 			}
 		}
 	}
+    std::cout << "drop points: " << count << std::endl;
 
 	EFIndicesValid = false;
 	makeIDX();
@@ -636,7 +642,6 @@ void EnergyFunctional::orthogonalize(VecX* b, MatXX* H)
 void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* HCalib)
 {
 
-
     TicToc timer_solveSystemF;
 
 	if(setting_solverMode & SOLVER_USE_GN) lambda=0;
@@ -704,7 +709,7 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 	}
 //    exit(1);
     auto times_solveSystemF = timer_solveSystemF.toc();
-    std::cout << "solveSystemF cost time " << times_solveSystemF << std::endl;
+//    std::cout << "solveSystemF cost time " << times_solveSystemF << std::endl;
 
 	VecX x;
 
@@ -734,10 +739,11 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 		}
 		x = SVecI.asDiagonal() * svd.matrixV() * Ub;
 	} else {
-        printf("........hello\n");
+//        printf("........hello\n");
 		VecX SVecI = (HFinal_top.diagonal()+VecX::Constant(HFinal_top.cols(), 10)).cwiseSqrt().cwiseInverse();
 		MatXX HFinalScaled = SVecI.asDiagonal() * HFinal_top * SVecI.asDiagonal();
-		x = SVecI.asDiagonal() * HFinalScaled.ldlt().solve(SVecI.asDiagonal() * bFinal_top);//  SVec.asDiagonal() * svd.matrixV() * Ub;
+		x = SVecI.asDiagonal() * HFinalScaled.llt().solve(SVecI.asDiagonal() * bFinal_top);//  SVec.asDiagonal() * svd.matrixV() * Ub;
+//        x = SVecI.asDiagonal() * HFinalScaled.ldlt().solve(SVecI.asDiagonal() * bFinal_top);//  SVec.asDiagonal() * svd.matrixV() * Ub;
 	}
 
 	if((setting_solverMode & SOLVER_ORTHOGONALIZE_X) ||
@@ -785,6 +791,47 @@ VecX EnergyFunctional::getStitchedDeltaF() const
         d.segment<8>(CPARS+8*h) = frames[h]->delta;
 	return d;
 }
+
+#ifdef ROOTBA
+#include <Eigen/SparseCore>
+#include <Eigen/IterativeLinearSolvers>
+    void EnergyFunctional::test_QR_decomp()
+    {
+        int m=1000000, n = 100;
+        VecX x(n), b(m);
+//    Eigen::SparseMatrix<double> A(m, n);
+        Eigen::SparseMatrix<double, 1000000, 100> A = Eigen::SparseMatrix<double, 1000000, 100>::Random();
+// fill A and b
+//    Eigen::LeastSquaresConjugateGradient<Eigen::SparseMatrix<double> > lscg;
+        Eigen::LeastSquaresConjugateGradient<Eigen::SparseMatrix<double, 1000000, 100> > lscg;
+        lscg.compute(A);
+        x = lscg.solve(b);
+        std::cout << "#iterations:     " << lscg.iterations() << std::endl;
+        std::cout << "estimated error: " << lscg.error()      << std::endl;
+        std::cout << "x: " << x.transpose() << std::endl;
+// update b, and solve again
+        x = lscg.solve(b);
+//    VecXf A;
+//    A.setZero(8, 1);
+//
+//    A << 3.5, 2.1, 7.7, 0.7, 9.6, 10.1, 2.3, 5.5;
+//
+//    MatXXf Q2;
+//
+//    accSSE_top_A->my_generate_Q2(Q2, A);
+//
+//    std::cout << "Q2:\n" << Q2 << std::endl;
+//    std::cout << "Q2.transpose() * A:\n" << Q2.transpose() * A << std::endl;
+
+//    MatXXf Q;
+//    VecXf R;
+
+// Q2: 第0列到第2列，总共是0-3总共4列。
+//    int n = 5;
+//    for (int i = 3; i >= 0; i--)
+//        accSSE_top_A->my_print_Q2(A, i, n);
+    }
+#endif
 
 
 }
